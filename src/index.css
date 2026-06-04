@@ -1,0 +1,181 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FreshOn Go — Fresh Transit design system. All colors HSL. */
+
+@layer base {
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 215 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+
+    /* Forest Green */
+    --primary: 142 72% 29%;
+    --primary-foreground: 210 40% 98%;
+    --primary-glow: 142 65% 45%;
+    --primary-soft: 142 50% 94%;
+
+    /* Deep Slate */
+    --secondary: 215 25% 27%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 210 30% 94%;
+    --muted-foreground: 215 16% 45%;
+
+    /* Swift Amber */
+    --accent: 38 92% 50%;
+    --accent-foreground: 215 25% 15%;
+    --accent-glow: 38 100% 60%;
+
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 72% 35%;
+    --success-foreground: 210 40% 98%;
+
+    --border: 215 20% 90%;
+    --input: 215 20% 90%;
+    --ring: 142 72% 29%;
+
+    --radius: 1.25rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(142 72% 29%), hsl(142 65% 40%));
+    --gradient-amber: linear-gradient(135deg, hsl(38 92% 50%), hsl(28 95% 55%));
+    --gradient-slate: linear-gradient(160deg, hsl(215 28% 22%), hsl(215 25% 12%));
+    --gradient-fresh: linear-gradient(180deg, hsl(210 40% 98%), hsl(142 30% 95%));
+
+    /* Shadows */
+    --shadow-glow-primary: 0 8px 30px -8px hsl(142 72% 29% / 0.45);
+    --shadow-glow-amber: 0 8px 30px -8px hsl(38 92% 50% / 0.55);
+    --shadow-card: 0 4px 24px -8px hsl(215 25% 27% / 0.12);
+    --shadow-elevated: 0 12px 40px -12px hsl(215 25% 27% / 0.25);
+
+    /* Glass */
+    --glass-bg: hsla(0, 0%, 100%, 0.72);
+    --glass-border: hsla(0, 0%, 100%, 0.5);
+
+    --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body, #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background:
+      radial-gradient(1200px 600px at 100% -10%, hsl(142 50% 92%) 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 100%, hsl(38 80% 92%) 0%, transparent 55%),
+      hsl(var(--background));
+  }
+}
+
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid var(--glass-border);
+  }
+  .glass-dark {
+    background: hsla(215, 25%, 15%, 0.72);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    border: 1px solid hsla(0, 0%, 100%, 0.08);
+  }
+  .map-grid {
+    background-color: hsl(142 30% 94%);
+    background-image:
+      linear-gradient(hsl(142 25% 88%) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(142 25% 88%) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  /* Radar pulse */
+  @keyframes radar {
+    0%   { transform: scale(0.6); opacity: 0.7; }
+    100% { transform: scale(2.6); opacity: 0; }
+  }
+  .animate-radar { animation: radar 2.6s ease-out infinite; }
+
+  @keyframes glow-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.55), var(--shadow-glow-primary); }
+    50%      { box-shadow: 0 0 0 14px hsl(var(--primary) / 0), var(--shadow-glow-primary); }
+  }
+  .animate-glow-pulse { animation: glow-pulse 2.2s ease-out infinite; }
+
+  @keyframes amber-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--accent) / 0.6); }
+    50%      { box-shadow: 0 0 0 12px hsl(var(--accent) / 0); }
+  }
+  .animate-amber-pulse { animation: amber-pulse 1.6s ease-out infinite; }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up { animation: fade-up 0.5s var(--transition-smooth) both; }
+
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-slide-up { animation: slide-up 0.45s var(--transition-smooth) both; }
+
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  .shimmer {
+    background: linear-gradient(90deg,
+      hsl(var(--muted)) 0%,
+      hsl(210 30% 97%) 50%,
+      hsl(var(--muted)) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+
+  @keyframes ripple {
+    0%   { transform: scale(0); opacity: 0.45; }
+    100% { transform: scale(20); opacity: 0; }
+  }
+  .animate-ripple { animation: ripple 0.9s ease-out forwards; }
+
+  @keyframes draw-check {
+    to { stroke-dashoffset: 0; }
+  }
+  .draw-check { stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw-check 0.7s ease-out 0.3s forwards; }
+
+  @keyframes sprout {
+    0%   { transform: scaleY(0); opacity: 0; transform-origin: bottom; }
+    60%  { transform: scaleY(1.05); opacity: 1; }
+    100% { transform: scaleY(1); opacity: 1; }
+  }
+  .animate-sprout { animation: sprout 0.7s ease-out both; }
+
+  @keyframes route-dash {
+    to { stroke-dashoffset: -24; }
+  }
+  .animate-route { stroke-dasharray: 8 8; animation: route-dash 1s linear infinite; }
+
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
