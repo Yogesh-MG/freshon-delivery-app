@@ -10,6 +10,12 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    fs: {
+      allow: [
+        // Allow serving files from one level up (workspace root)
+        path.resolve(__dirname, ".."),
+      ],
+    },
   },
   plugins: [react()].filter(Boolean),
   resolve: {
