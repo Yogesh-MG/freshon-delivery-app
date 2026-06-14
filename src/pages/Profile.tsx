@@ -47,6 +47,9 @@ const Profile = () => {
   const [editForm, setEditForm] = useState({
     vehicle_type: "BIKE" as "BIKE" | "SCOOTER" | "CYCLE" | "VAN",
     vehicle_number: "",
+    address: "",
+    city: "",
+    pincode: "",
   });
 
   useEffect(() => {
@@ -61,6 +64,9 @@ const Profile = () => {
       setEditForm({
         vehicle_type: result.data.vehicle_type,
         vehicle_number: result.data.vehicle_number,
+        address: result.data.address || "",
+        city: result.data.city || "",
+        pincode: result.data.pincode || "",
       });
     } else {
       toast.error(result.error || "Failed to load profile");
@@ -164,7 +170,7 @@ const Profile = () => {
                 <div className="rounded-3xl bg-card p-4 shadow-card-soft ring-1 ring-border">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                      Vehicle Details
+                      Vehicle &amp; Address
                     </h3>
                     {!editing && (
                       <button
@@ -213,6 +219,47 @@ const Profile = () => {
                           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
+                      <div>
+                        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Address
+                        </label>
+                        <textarea
+                          value={editForm.address}
+                          onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                          placeholder="Your residential address"
+                          maxLength={200}
+                          className="min-h-[64px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            City
+                          </label>
+                          <input
+                            type="text"
+                            value={editForm.city}
+                            onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                            placeholder="City"
+                            maxLength={60}
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                            Pincode
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={editForm.pincode}
+                            onChange={(e) => setEditForm({ ...editForm, pincode: e.target.value.replace(/\D/g, "").slice(0, 8) })}
+                            placeholder="Pincode"
+                            maxLength={8}
+                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                          />
+                        </div>
+                      </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setEditing(false)}
@@ -254,6 +301,28 @@ const Profile = () => {
                             {profile.vehicle_number || "Not set"}
                           </div>
                           <div className="text-xs text-muted-foreground">Vehicle Number</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
+                          <Phone className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-foreground">
+                            {profile.phone || "Not set"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Phone</div>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+                          <MapPin className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-foreground">
+                            {[profile.address, profile.city, profile.pincode].filter(Boolean).join(", ") || "Not set"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Address</div>
                         </div>
                       </div>
                     </div>

@@ -37,13 +37,13 @@ const VEHICLES = [
   { id: "VAN" as const, name: "Van", icon: Truck },
 ];
 
+// name/phone are sourced from the partner's account (set at sign-up) and shown
+// read-only here — only the fields below are editable and persisted.
 const profileSchema = z.object({
-  full_name: z.string().trim().min(2).max(80),
-  phone: z.string().trim().min(7).max(20),
   vehicle_type: z.enum(["CYCLE", "SCOOTER", "BIKE", "VAN"]),
   vehicle_number: z.string().trim().min(4, "Enter a valid vehicle number").max(20),
-  address: z.string().trim().min(5).max(200),
-  city: z.string().trim().min(2).max(60),
+  address: z.string().trim().min(5, "Enter your full address").max(200),
+  city: z.string().trim().min(2, "Enter your city").max(60),
   pincode: z.string().trim().regex(/^\d{4,8}$/, "Enter a valid pincode"),
 });
 
@@ -91,12 +91,12 @@ const Onboarding = () => {
       const p = profileResult.data;
       setProfile({
         full_name: p.name || "",
-        phone: "", // Phone comes from user, not profile
+        phone: p.phone || "",
         vehicle_type: p.vehicle_type,
         vehicle_number: p.vehicle_number || "",
-        address: "",
-        city: "",
-        pincode: "",
+        address: p.address || "",
+        city: p.city || "",
+        pincode: p.pincode || "",
       });
     }
 
@@ -141,6 +141,9 @@ const Onboarding = () => {
     const result = await DeliveryPartnerService.updateProfile({
       vehicle_type: profile.vehicle_type,
       vehicle_number: profile.vehicle_number,
+      address: profile.address,
+      city: profile.city,
+      pincode: profile.pincode,
     });
 
     if (result.success) {
@@ -244,20 +247,18 @@ const Onboarding = () => {
                 <div className="space-y-3 rounded-3xl bg-card p-4 shadow-card-soft ring-1 ring-border">
                   <Field label="Full name">
                     <input
-                      className="field"
+                      className="field cursor-not-allowed opacity-70"
                       value={profile.full_name}
-                      onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                      maxLength={80}
-                      placeholder="Enter your full name"
+                      readOnly
+                      placeholder="From your account"
                     />
                   </Field>
                   <Field label="Phone">
                     <input
-                      className="field"
+                      className="field cursor-not-allowed opacity-70"
                       value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      placeholder="+91..."
-                      maxLength={20}
+                      readOnly
+                      placeholder="From your account"
                     />
                   </Field>
                   <div>
