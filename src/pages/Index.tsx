@@ -231,6 +231,14 @@ const Index = () => {
     return true;
   };
 
+  const resendDeliveryOtp = async (stop: Stop) => {
+    const assignmentId = stop.assignment_id ?? activeMission?.id;
+    if (!assignmentId) return;
+    const result = await DeliveryAssignmentService.resendOtp(assignmentId);
+    if (result.success) toast.success("OTP resent to customer");
+    else toast.error(result.error || "Unable to resend OTP");
+  };
+
   const logout = async () => {
     await signOut();
     navigate("/auth", { replace: true });
@@ -366,7 +374,7 @@ const Index = () => {
         )}
       </PhoneFrame>
 
-      <ProofDrawer stop={openStop} onClose={() => setOpenStop(null)} onComplete={completeStop} />
+      <ProofDrawer stop={openStop} onClose={() => setOpenStop(null)} onComplete={completeStop} onResend={resendDeliveryOtp} />
     </main>
   );
 };

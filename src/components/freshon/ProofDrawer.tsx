@@ -8,15 +8,18 @@ export const ProofDrawer = ({
   stop,
   onClose,
   onComplete,
+  onResend,
 }: {
   stop: Stop | null;
   onClose: () => void;
   onComplete: (stop: Stop, proof: { type: "otp" | "photo"; otpCode?: string; photo?: File }) => Promise<boolean>;
+  onResend?: (stop: Stop) => Promise<void>;
 }) => {
   const [mode, setMode] = useState<Mode>("details");
-  const [otp, setOtp] = useState(["", "", "", ""]);
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [cod, setCod] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [confetti, setConfetti] = useState<{ id: number; x: number; r: number; d: number; c: string }[]>([]);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
@@ -24,11 +27,18 @@ export const ProofDrawer = ({
   useEffect(() => {
     if (stop) {
       setMode("details");
-      setOtp(["", "", "", ""]);
+      setOtp(["", "", "", "", "", ""]);
       setCod(false);
       setPhoto(null);
     }
   }, [stop?.id]);
+
+  const resend = async () => {
+    if (!stop || !onResend) return;
+    setResending(true);
+    await onResend(stop);
+    setResending(false);
+  };
 
   const otpFilled = otp.every((d) => d !== "");
 
@@ -114,10 +124,10 @@ export const ProofDrawer = ({
           {mode === "otp" && (
             <div className="space-y-4 py-2">
               <div className="text-center">
-                <div className="text-sm font-bold text-foreground">Enter the 4-digit code</div>
-                <div className="text-xs text-muted-foreground">Customer received it via SMS</div>
+                <div className="text-sm font-bold text-foreground">Enter the 6-digit code</div>
+                <div className="text-xs text-muted-foreground">Sent to the customer via SMS at pickup</div>
               </div>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-2">
                 {otp.map((d, i) => (
                   <input
                     key={i}
@@ -128,9 +138,12 @@ export const ProofDrawer = ({
                     onChange={(e) => {
                       const v = e.target.value.replace(/\D/g, "").slice(0, 1);
                       const next = [...otp]; next[i] = v; setOtp(next);
-                      if (v && i < 3) refs.current[i + 1]?.focus();
+                      if (v && i < 5) refs.current[i + 1]?.focus();
                     }}
-                    className="h-14 w-12 rounded-2xl border border-border bg-card text-center text-2xl font-extrabold text-foreground outline-none ring-primary transition focus:ring-2"
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace" && !otp[i] && i > 0) refs.current[i - 1]?.focus();
+                    }}
+                    className="h-14 w-11 rounded-2xl border border-border bg-card text-center text-2xl font-extrabold text-foreground outline-none ring-primary transition focus:ring-2"
                   />
                 ))}
               </div>
@@ -145,6 +158,26 @@ export const ProofDrawer = ({
               >
                 Verify & Complete
               </button>
+              {onResend && (
+                <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
+                  <span>Customer didn't get the code?</span>
+                  <button
+                    type="button"
+                    onClick={resend}
+                    disabled={resending}
+                    className="font-bold text-primary hover:underline disabled:opacity-50"
+                  >
+                    {resending ? "Sending…" : "Resend code"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("photo")}
+                    className="font-bold text-secondary hover:underline"
+                  >
+                    Use photo instead
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
