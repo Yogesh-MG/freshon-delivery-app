@@ -35,7 +35,7 @@ export const MissionCard = ({ mission, onAccept }: { mission: Assignment; onAcce
         <div className="text-2xl font-extrabold leading-tight">{pickup?.label || "Pickup"} to {dropCount} drops</div>
 
         <div className="mt-4 grid grid-cols-3 gap-2">
-          <Stat label="Earnings" value={`₹${mission.earnings.toFixed(2)}`} accent />
+          <Stat label="Earnings" value={`₹${Number(mission.earnings).toFixed(2)}`} accent />
           <Stat label="Distance" value={`${mission.distance_km} km`} />
           <Stat label="Weight" value={`${mission.weight_kg} kg`} />
         </div>
