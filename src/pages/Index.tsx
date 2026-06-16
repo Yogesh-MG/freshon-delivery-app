@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowRight, ChevronLeft, Home, Loader2, LogOut, Map, Package, Receipt, RefreshCw, Route, User } from "lucide-react";
+import { ArrowRight, ChevronLeft, Home, IndianRupee, Loader2, LogOut, Map, Package, Receipt, RefreshCw, Route, User } from "lucide-react";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
 import { FreshOnLogo } from "@/components/freshon/Logo";
 import { StatusToggle } from "@/components/freshon/StatusToggle";
@@ -349,6 +349,7 @@ const Index = () => {
                   rider={riderPos}
                   busy={tripBusy}
                   onConfirmPickup={confirmTripPickup}
+                  onTripUpdate={setTrip}
                   onReoptimize={reoptimizeTrip}
                   onOpenStop={openTripStop}
                 />
@@ -423,6 +424,12 @@ const ActiveTripCard = ({ trip, onOpen }: { trip: DeliveryTrip; onOpen: () => vo
         </div>
         <div className="mt-3 text-2xl font-extrabold leading-tight">{dropoffs.length} stops · {Number(trip.total_distance_km).toFixed(1)} km</div>
         <div className="mt-1 text-sm opacity-80">~{trip.total_duration_min} min · {done}/{dropoffs.length} delivered</div>
+        {trip.earnings != null && (
+          <div className="mt-1 flex items-center gap-1 text-sm font-bold text-accent">
+            <IndianRupee className="h-3.5 w-3.5" />
+            {Number(trip.earnings).toFixed(2)} this trip
+          </div>
+        )}
         <button
           onClick={onOpen}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-4 text-sm font-bold text-primary-foreground shadow-glow-primary"
@@ -446,6 +453,12 @@ const AvailableTripCard = ({ trip, count, busy, onAccept }: { trip: DeliveryTrip
       </div>
       <div className="mt-3 text-xl font-extrabold text-foreground">{dropoffs.length} orders · {Number(trip.total_distance_km).toFixed(1)} km</div>
       <div className="text-sm text-muted-foreground">~{trip.total_duration_min} min from {trip.hub?.label || "hub"}</div>
+      {trip.earnings != null && (
+        <div className="mt-1 flex items-center gap-1 text-base font-extrabold text-primary">
+          <IndianRupee className="h-4 w-4" />
+          {Number(trip.earnings).toFixed(2)} earnings
+        </div>
+      )}
       <button
         onClick={onAccept}
         disabled={busy}

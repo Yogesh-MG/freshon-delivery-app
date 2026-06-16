@@ -1,11 +1,14 @@
-import { CheckCircle2, MapPin, Navigation, Package, RefreshCw, Route } from "lucide-react";
+import { CheckCircle2, ExternalLink, IndianRupee, MapPin, Navigation, RefreshCw, Route } from "lucide-react";
 import { DeliveryTrip, TripStop } from "@/lib/deliveryTripService";
+import { openGoogleMapsRoute } from "@/lib/mapsUtils";
+import { BagScanFlow } from "./BagScanFlow";
 import { DeliveryMap, MapStop } from "./DeliveryMap";
 
 export const TripView = ({
   trip,
   rider,
   onConfirmPickup,
+  onTripUpdate,
   onOpenStop,
   onReoptimize,
   busy,
@@ -13,6 +16,7 @@ export const TripView = ({
   trip: DeliveryTrip;
   rider: { latitude: number; longitude: number } | null;
   onConfirmPickup: () => void;
+  onTripUpdate: (trip: DeliveryTrip) => void;
   onOpenStop: (stop: TripStop) => void;
   onReoptimize: () => void;
   busy?: boolean;
@@ -30,6 +34,36 @@ export const TripView = ({
   const doneCount = dropoffs.filter((s) => s.is_completed).length;
   const awaitingPickup = trip.status === "ASSIGNED";
 
+  const handleNavigate = () => {
+    const origin = rider
+      ? { lat: rider.latitude, lng: rider.longitude }
+      : trip.hub?.latitude != null && trip.hub?.longitude != null
+      ? { lat: trip.hub.latitude!, lng: trip.hub.longitude! }
+      : null;
+
+    if (awaitingPickup) {
+      if (!trip.hub?.latitude || !trip.hub?.longitude) return;
+      openGoogleMapsRoute({ origin, destination: { lat: trip.hub.latitude!, lng: trip.hub.longitude! } });
+      return;
+    }
+
+    const remaining = dropoffs
+      .filter((s) => !s.is_completed && s.latitude != null && s.longitude != null)
+      .sort((a, b) => a.sequence - b.sequence);
+    if (remaining.length === 0) return;
+
+    const dest = remaining[remaining.length - 1];
+    openGoogleMapsRoute({
+      origin,
+      destination: { lat: dest.latitude!, lng: dest.longitude! },
+      waypoints: remaining.slice(0, -1).map((s) => ({ lat: s.latitude!, lng: s.longitude! })),
+    });
+  };
+
+  const canNavigate = awaitingPickup
+    ? !!(trip.hub?.latitude && trip.hub?.longitude)
+    : dropoffs.some((s) => !s.is_completed && s.latitude != null && s.longitude != null);
+
   return (
     <div className="space-y-4">
       <DeliveryMap stops={mapStops} polyline={trip.encoded_polyline} rider={rider} className="h-56" />
@@ -45,6 +79,12 @@ export const TripView = ({
           <div className="text-xs text-muted-foreground">
             ~{trip.total_duration_min} min · {doneCount}/{dropoffs.length} delivered
           </div>
+          {trip.earnings != null && (
+            <div className="mt-1 flex items-center gap-1 text-sm font-bold text-primary">
+              <IndianRupee className="h-3.5 w-3.5" />
+              {Number(trip.earnings).toFixed(2)} earned this trip
+            </div>
+          )}
         </div>
         <button
           onClick={onReoptimize}
@@ -56,14 +96,23 @@ export const TripView = ({
         </button>
       </div>
 
+      <button
+        onClick={handleNavigate}
+        disabled={!canNavigate}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1a73e8] px-5 py-3.5 text-sm font-bold text-white shadow-md disabled:opacity-40"
+        aria-label="Open in Google Maps"
+      >
+        <ExternalLink className="h-4 w-4" />
+        {awaitingPickup ? "Navigate to Hub" : "Navigate Deliveries"}
+      </button>
+
       {awaitingPickup && (
-        <button
-          onClick={onConfirmPickup}
-          disabled={busy}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-60"
-        >
-          <Package className="h-4 w-4" /> Confirm hub pickup ({dropoffs.length} orders)
-        </button>
+        <BagScanFlow
+          trip={trip}
+          onTripUpdate={onTripUpdate}
+          onAllScanned={onConfirmPickup}
+          busy={busy}
+        />
       )}
 
       <div className="space-y-2">
