@@ -15,6 +15,7 @@ import { TripView } from "@/components/freshon/TripView";
 import { RouteList } from "@/components/freshon/RouteList";
 import { FeeBreakdown } from "@/components/freshon/FeeBreakdown";
 import { ProofDrawer } from "@/components/freshon/ProofDrawer";
+import { QrScanner } from "@/components/freshon/QrScanner";
 import { Assignment, EarningsStats, Stop } from "@/lib/types";
 import { DeliveryAssignmentService } from "@/lib/deliveryAssignmentService";
 import { DeliveryStatusService } from "@/lib/deliveryStatusService";
@@ -41,6 +42,7 @@ const Index = () => {
   const [completedStopIds, setCompletedStopIds] = useState<Set<string>>(new Set());
   const [earnings, setEarnings] = useState<EarningsStats>(emptyStats);
   const [openStop, setOpenStop] = useState<Stop | null>(null);
+  const [pickupScanStop, setPickupScanStop] = useState<Stop | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [trip, setTrip] = useState<DeliveryTrip | null>(null);
@@ -174,9 +176,15 @@ const Index = () => {
     toast.success("Mission accepted");
   };
 
-  const confirmPickup = async (stop: Stop) => {
+  // Pickup now requires scanning the handover QR printed on the bag.
+  const startPickupScan = (stop: Stop) => {
+    setOpenStop(null);
+    setPickupScanStop(stop);
+  };
+
+  const confirmPickup = async (stop: Stop, handoverCode: string) => {
     if (!activeMission) return;
-    const result = await DeliveryAssignmentService.markPickedUp(activeMission.id);
+    const result = await DeliveryAssignmentService.markPickedUp(activeMission.id, handoverCode);
     if (!result.success) {
       toast.error(result.error || "Unable to confirm pickup");
       return;
@@ -204,18 +212,26 @@ const Index = () => {
     }
 
     if (stop.type === "pickup") {
-      await confirmPickup(stop);
-      return true;
+      // Pickup is completed by scanning the handover QR, not from the drawer.
+      // Return false so the drawer doesn't show the "complete" screen — the
+      // scanner takes over and confirmPickup runs once the QR is read.
+      startPickupScan(stop);
+      return false;
     }
+
+    // Capture the rider's location: needed for the IN_TRANSIT ping and for the
+    // backend's 300m delivery geofence check.
+    const coords = await getCurrentCoords();
 
     // Single-mission flow walks ACCEPTED → IN_TRANSIT before delivery.
     // Trip orders are already PICKED_UP via the trip-level hub pickup.
     if (!isTripStop && activeMission?.status === "ACCEPTED") {
-      const coords = await getCurrentCoords();
       await DeliveryAssignmentService.markInTransit(activeMission.id, coords?.latitude, coords?.longitude);
     }
 
-    const result = await DeliveryAssignmentService.markDelivered(assignmentId, stop.id, proof.type, proof.otpCode);
+    const result = await DeliveryAssignmentService.markDelivered(
+      assignmentId, stop.id, proof.type, proof.otpCode, coords?.latitude, coords?.longitude,
+    );
     if (!result.success) {
       toast.error(result.error || "Unable to complete stop");
       return false;
@@ -363,7 +379,7 @@ const Index = () => {
                   mission={activeMission}
                   completedStopIds={completedStopIds}
                   onOpenStop={setOpenStop}
-                  onPickup={confirmPickup}
+                  onPickup={startPickupScan}
                 />
                 <FeeBreakdown mission={activeMission} />
               </div>
@@ -375,6 +391,19 @@ const Index = () => {
       </PhoneFrame>
 
       <ProofDrawer stop={openStop} onClose={() => setOpenStop(null)} onComplete={completeStop} onResend={resendDeliveryOtp} />
+
+      {pickupScanStop && (
+        <QrScanner
+          title="Scan handover QR"
+          hint={`Scan the bag QR for ${pickupScanStop.label}`}
+          onCancel={() => setPickupScanStop(null)}
+          onScan={async (code) => {
+            const stop = pickupScanStop;
+            setPickupScanStop(null);
+            if (stop) await confirmPickup(stop, code);
+          }}
+        />
+      )}
     </main>
   );
 };

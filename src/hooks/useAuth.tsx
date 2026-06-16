@@ -28,12 +28,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // When any API call detects an unrecoverable 401, drop the session so the
+    // Protected guard sends the rider to /auth instead of leaving them stuck.
+    const onExpired = () => {
+      backendAuthService.clearSession();
+      setUser(null);
+    };
+    window.addEventListener("freshon:auth-expired", onExpired);
+
     const saved = backendAuthService.getStoredUser();
     if (saved) setUser(saved);
     backendAuthService.getCurrentUser().then((result) => {
-      if (result.success && result.data) setUser(result.data);
+      if (result.success && result.data) {
+        setUser(result.data);
+      } else if (result.status === 401) {
+        // Stored session is no longer valid — clear it. (Network/offline errors
+        // have no 401 status, so an offline rider stays logged in.)
+        backendAuthService.clearSession();
+        setUser(null);
+      }
       setLoading(false);
     });
+
+    return () => window.removeEventListener("freshon:auth-expired", onExpired);
   }, []);
 
   const sendOtp = async (phone: string) => {

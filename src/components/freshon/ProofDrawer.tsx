@@ -1,5 +1,5 @@
 import { Stop } from "@/lib/types";
-import { Camera, CheckCircle2, KeyRound, Wallet, X } from "lucide-react";
+import { Camera, CheckCircle2, KeyRound, Navigation, ScanLine, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type Mode = "details" | "otp" | "photo" | "done";
@@ -71,9 +71,20 @@ export const ProofDrawer = ({
         <div className="flex justify-center pt-3"><div className="h-1.5 w-12 rounded-full bg-border" /></div>
         <div className="flex items-start justify-between px-5 pt-2">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{stop.type === "pickup" ? "Pickup" : "Drop-off"}</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{stop.type === "pickup" ? "Pickup · Hub" : "Drop-off"}</div>
             <div className="text-xl font-extrabold text-foreground">{stop.label}</div>
             <div className="text-xs text-muted-foreground">{stop.address}</div>
+            {stop.latitude != null && stop.longitude != null && (
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-primary-soft px-3 py-1.5 text-xs font-bold text-primary"
+              >
+                <Navigation className="h-3.5 w-3.5" />
+                Navigate to {stop.type === "pickup" ? "hub" : "drop-off"}
+              </a>
+            )}
           </div>
           <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted" aria-label="Close">
             <X className="h-4 w-4" />
@@ -114,8 +125,8 @@ export const ProofDrawer = ({
                   </button>
                 </div>
               ) : (
-                <button onClick={() => finish({ type: "photo" })} disabled={busy} className="w-full rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50">
-                  Confirm Pickup
+                <button onClick={() => finish({ type: "photo" })} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50">
+                  <ScanLine className="h-4 w-4" /> Scan handover QR
                 </button>
               )}
             </div>
