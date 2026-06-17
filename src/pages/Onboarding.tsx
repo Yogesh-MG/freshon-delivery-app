@@ -209,7 +209,7 @@ const Onboarding = () => {
 
   if (loading) {
     return (
-      <main className="min-h-screen">
+      <main className="h-dvh overflow-hidden">
         <PhoneFrame>
           <div className="grid h-full place-items-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -220,7 +220,7 @@ const Onboarding = () => {
   }
 
   return (
-    <main className="min-h-screen">
+    <main className="h-dvh overflow-hidden">
       <PhoneFrame>
         <div className="flex h-full flex-col">
           <header className="flex items-center justify-between px-5 pt-6">
@@ -237,7 +237,7 @@ const Onboarding = () => {
             <StepDot n={3} active={step >= 3} done={false} label="Status" />
           </div>
 
-          <div className="flex-1 space-y-4 px-5 pb-10 pt-5">
+          <div className="flex-1 overflow-y-auto space-y-4 px-5 pb-10 pt-5">
             {step === 1 && (
               <div className="space-y-4 animate-fade-up">
                 <div>

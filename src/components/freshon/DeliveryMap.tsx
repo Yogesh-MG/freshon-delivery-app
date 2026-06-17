@@ -114,7 +114,7 @@ export const DeliveryMap = ({ stops, polyline, rider, className }: DeliveryMapPr
   const hasGeo = stops.some((s) => s.latitude != null && s.longitude != null);
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl ring-1 ring-border ${className || "h-52"}`}>
+    <div className={`relative overflow-hidden ring-1 ring-border ${className || "h-52 rounded-3xl"}`}>
       <div ref={containerRef} className="h-full w-full" />
       {!hasGeo && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-card/80 text-center text-xs font-semibold text-muted-foreground">

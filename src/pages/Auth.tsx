@@ -69,7 +69,7 @@ const Auth = () => {
   };
 
   return (
-    <main className="min-h-screen">
+    <main className="h-dvh overflow-hidden">
       <PhoneFrame>
         <div className="flex min-h-full flex-col px-6 pt-8 pb-10">
           <FreshOnLogo />

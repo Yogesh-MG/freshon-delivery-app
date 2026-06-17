@@ -1,4 +1,5 @@
-import { CheckCircle2, ExternalLink, IndianRupee, MapPin, Navigation, RefreshCw, Route } from "lucide-react";
+import { useState } from "react";
+import { CheckCircle2, ExternalLink, IndianRupee, Loader2, MapPin, Navigation, RefreshCw, Route, X } from "lucide-react";
 import { DeliveryTrip, TripStop } from "@/lib/deliveryTripService";
 import { openGoogleMapsRoute } from "@/lib/mapsUtils";
 import { BagScanFlow } from "./BagScanFlow";
@@ -11,6 +12,7 @@ export const TripView = ({
   onTripUpdate,
   onOpenStop,
   onReoptimize,
+  onCancel,
   busy,
 }: {
   trip: DeliveryTrip;
@@ -19,6 +21,7 @@ export const TripView = ({
   onTripUpdate: (trip: DeliveryTrip) => void;
   onOpenStop: (stop: TripStop) => void;
   onReoptimize: () => void;
+  onCancel?: () => Promise<void>;
   busy?: boolean;
 }) => {
   const mapStops: MapStop[] = trip.stops.map((s) => ({
@@ -65,9 +68,10 @@ export const TripView = ({
     : dropoffs.some((s) => !s.is_completed && s.latitude != null && s.longitude != null);
 
   return (
-    <div className="space-y-4">
+    <div>
       <DeliveryMap stops={mapStops} polyline={trip.encoded_polyline} rider={rider} className="h-56" />
 
+      <div className="space-y-4 px-5 pt-4">
       <div className="flex items-center justify-between rounded-3xl glass p-4 shadow-card-soft">
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
@@ -113,6 +117,10 @@ export const TripView = ({
           onAllScanned={onConfirmPickup}
           busy={busy}
         />
+      )}
+
+      {awaitingPickup && onCancel && (
+        <CancelTripButton onCancel={onCancel} busy={busy} />
       )}
 
       <div className="space-y-2">
@@ -162,6 +170,48 @@ export const TripView = ({
             </div>
           );
         })}
+      </div>
+      </div>
+    </div>
+  );
+};
+
+const CancelTripButton = ({ onCancel, busy }: { onCancel: () => Promise<void>; busy?: boolean }) => {
+  const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  if (!confirming) {
+    return (
+      <button
+        onClick={() => setConfirming(true)}
+        disabled={busy}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/30 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400 disabled:opacity-50"
+      >
+        <X className="h-4 w-4" /> Cancel Trip
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-red-400/30 bg-red-50 p-4 dark:bg-red-500/10">
+      <p className="mb-3 text-center text-sm font-semibold text-red-700 dark:text-red-400">
+        Cancel this trip? It will be returned to the pool.
+      </p>
+      <div className="flex gap-3">
+        <button
+          onClick={() => setConfirming(false)}
+          className="flex-1 rounded-xl border border-border bg-card py-2.5 text-sm font-bold text-foreground"
+        >
+          Keep trip
+        </button>
+        <button
+          onClick={async () => { setCancelling(true); await onCancel(); setCancelling(false); }}
+          disabled={cancelling}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-70"
+        >
+          {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+          Yes, cancel
+        </button>
       </div>
     </div>
   );

@@ -61,7 +61,7 @@ const Earnings = () => {
   };
 
   return (
-    <main className="min-h-screen">
+    <main className="h-dvh overflow-hidden">
       <PhoneFrame>
         <div className="flex h-full flex-col">
           {/* Header */}
@@ -77,7 +77,7 @@ const Earnings = () => {
           </header>
 
           {/* Content */}
-          <div className="flex-1 space-y-4 px-5 pb-24 pt-5">
+          <div className="flex-1 overflow-y-auto space-y-4 px-5 pb-8 pt-5">
             <div>
               <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Earnings</h2>
               <p className="text-sm text-muted-foreground">Track your income and performance</p>

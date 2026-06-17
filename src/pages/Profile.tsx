@@ -101,7 +101,7 @@ const Profile = () => {
   };
 
   return (
-    <main className="min-h-screen">
+    <main className="h-dvh overflow-hidden">
       <PhoneFrame>
         <div className="flex h-full flex-col">
           {/* Header */}
@@ -123,7 +123,7 @@ const Profile = () => {
           </header>
 
           {/* Content */}
-          <div className="flex-1 space-y-4 px-5 pb-24 pt-5">
+          <div className="flex-1 overflow-y-auto space-y-4 px-5 pb-8 pt-5">
             <div>
               <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Profile</h2>
               <p className="text-sm text-muted-foreground">Manage your account details</p>
@@ -146,7 +146,7 @@ const Profile = () => {
                       <div className="text-sm opacity-90">@{profile.username}</div>
                       <div className="mt-1 flex items-center gap-1 text-xs opacity-80">
                         <Star className="h-3 w-3 fill-current" />
-                        {profile.rating.toFixed(1)} rating
+                        {Number(profile.rating).toFixed(1)} rating
                       </div>
                     </div>
                   </div>
