@@ -1,12 +1,13 @@
 {
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Freshon Delivery",
   "version": "1.0.0",
   "identifier": "com.freshon.delivery",
   "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1430",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build",
-    "devUrl": "http://localhost:1420",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "npm run build"
   },
   "app": {
     "windows": [
@@ -33,7 +34,8 @@
       "icons/icon.ico"
     ],
     "android": {
-      "minSdkVersion": 24
+      "minSdkVersion": 24,
+      "debugApplicationIdSuffix": ".debug"
     }
   }
 }

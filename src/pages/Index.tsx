@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowRight, ChevronLeft, Clock, Home, IndianRupee, Loader2, LogOut, Map, Package, Receipt, RefreshCw, Route, User, Wifi, WifiOff } from "lucide-react";
+import { ArrowRight, ChevronLeft, Clock, Home, IndianRupee, Loader2, Lock, LogOut, Map, Package, Receipt, RefreshCw, Route, ShieldCheck, User, Wifi, WifiOff } from "lucide-react";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
 import { FreshOnLogo } from "@/components/freshon/Logo";
 import { StatusToggle } from "@/components/freshon/StatusToggle";
@@ -19,6 +19,7 @@ import { QrScanner } from "@/components/freshon/QrScanner";
 import { Assignment, EarningsStats, Stop } from "@/lib/types";
 import { DeliveryAssignmentService } from "@/lib/deliveryAssignmentService";
 import { DeliveryStatusService } from "@/lib/deliveryStatusService";
+import { DeliveryPartnerService } from "@/lib/deliveryPartnerService";
 import { DeliveryTrip, DeliveryTripService, TripStop } from "@/lib/deliveryTripService";
 import { useAuth } from "@/hooks/useAuth";
 import { useDeliverySocket } from "@/hooks/useDeliverySocket";
@@ -58,6 +59,16 @@ const Index = () => {
   const [availableTrips, setAvailableTrips] = useState<DeliveryTrip[]>([]);
   const [riderPos, setRiderPos] = useState<{ latitude: number; longitude: number } | null>(null);
   const [tripBusy, setTripBusy] = useState(false);
+  // KYC/verification gate — a partner can only go online once every required
+  // document is uploaded AND approved by ops.
+  const [verification, setVerification] = useState<{
+    isComplete: boolean;
+    allVerified: boolean;
+    anyRejected: boolean;
+    uploaded: number;
+    required: number;
+  } | null>(null);
+  const isVerified = verification?.allVerified ?? false;
 
   const activeMission = useMemo(() => {
     return assignments.find((assignment) => assignment.id === activeAssignmentId)
@@ -72,12 +83,25 @@ const Index = () => {
 
   const refreshDashboard = async () => {
     setRefreshing(true);
-    const [assignmentResult, earningsResult, tripResult, availableResult] = await Promise.all([
+    const [assignmentResult, earningsResult, tripResult, availableResult, kycResult] = await Promise.all([
       DeliveryAssignmentService.getAssignments(),
       DeliveryStatusService.getEarnings(),
       DeliveryTripService.getActiveTrip(),
       DeliveryTripService.getAvailableTrips(),
+      DeliveryPartnerService.getKycDocuments(),
     ]);
+
+    if (kycResult.success && kycResult.data) {
+      const docs = kycResult.data.documents;
+      const ks = kycResult.data.kyc_status;
+      setVerification({
+        isComplete: ks.is_complete,
+        allVerified: ks.is_complete && docs.length > 0 && docs.every((d) => d.status === "verified"),
+        anyRejected: docs.some((d) => d.status === "rejected"),
+        uploaded: ks.uploaded_count,
+        required: ks.required_count,
+      });
+    }
 
     if (assignmentResult.success) {
       const nextAssignments = assignmentResult.data || [];
@@ -155,6 +179,13 @@ const Index = () => {
   };
 
   const updateOnline = async (nextOnline: boolean) => {
+    // A partner can only go online once verified. Guard here too in case the UI
+    // is bypassed.
+    if (nextOnline && !isVerified) {
+      toast.error("Complete verification to go online");
+      navigate("/onboarding");
+      return;
+    }
     const previous = online;
     setOnline(nextOnline);
     const coords = await getCurrentCoords();
@@ -338,7 +369,11 @@ const Index = () => {
             </header>
 
             <div className="flex-1 overflow-y-auto px-5 pt-5 pb-4 space-y-4">
-              <StatusToggle online={online} onChange={updateOnline} />
+              {isVerified ? (
+                <StatusToggle online={online} onChange={updateOnline} />
+              ) : (
+                <VerificationGate verification={verification} onOpen={() => navigate("/onboarding")} />
+              )}
               <EarningsHeader stats={earnings} />
               {trip ? (
                 <ActiveTripCard trip={trip} onOpen={() => setScreen("mission")} />
@@ -394,15 +429,26 @@ const Index = () => {
             ) : activeMission ? (
               <div className="flex-1 overflow-y-auto space-y-4 px-5 pt-4 pb-4">
                 <DeliveryMap
-                  stops={activeMission.stops.map((s) => ({
-                    latitude: s.latitude ?? null,
-                    longitude: s.longitude ?? null,
-                    type: s.type,
-                    label: s.label,
-                    sequence: s.sequence ?? 0,
-                    is_completed: completedStopIds.has(s.id),
-                  }))}
+                  stops={activeMission.stops
+                    // Stage the route: before pickup show rider → hub; once picked
+                    // up, show the route to the customer drop-off(s).
+                    .filter((s) =>
+                      activeMission.status === "PICKED_UP" || activeMission.status === "IN_TRANSIT"
+                        ? s.type === "dropoff"
+                        : s.type === "pickup",
+                    )
+                    .map((s) => ({
+                      latitude: s.latitude ?? null,
+                      longitude: s.longitude ?? null,
+                      type: s.type,
+                      label: s.label,
+                      sequence: s.sequence ?? 0,
+                      is_completed: completedStopIds.has(s.id),
+                    }))}
                   rider={riderPos}
+                  enableNavigate
+                  enableLocate
+                  onLocate={setRiderPos}
                 />
                 <div className="flex items-center justify-between">
                   <div>
@@ -452,6 +498,64 @@ const Index = () => {
         />
       )}
     </main>
+  );
+};
+
+const VerificationGate = ({
+  verification,
+  onOpen,
+}: {
+  verification: { isComplete: boolean; allVerified: boolean; anyRejected: boolean; uploaded: number; required: number } | null;
+  onOpen: () => void;
+}) => {
+  const uploaded = verification?.uploaded ?? 0;
+  const required = verification?.required ?? 5;
+  const anyRejected = verification?.anyRejected ?? false;
+  const isComplete = verification?.isComplete ?? false;
+
+  const { title, sub, cta } = anyRejected
+    ? {
+        title: "Action needed",
+        sub: "A document was rejected. Re-upload it to get verified.",
+        cta: "Fix documents",
+      }
+    : !isComplete
+    ? {
+        title: "Finish your sign-up",
+        sub: `Upload your documents (${uploaded}/${required}) to get verified and start earning.`,
+        cta: "Complete KYC",
+      }
+    : {
+        title: "Verification in review",
+        sub: "Your documents are being reviewed. You can go online once they're approved (usually within 24h).",
+        cta: "View status",
+      };
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl glass-dark p-5 text-primary-foreground">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] opacity-80">
+        <Lock className="h-3.5 w-3.5" /> Offline · Verification required
+      </div>
+      <div className="mt-1 text-2xl font-extrabold tracking-tight">{title}</div>
+      <div className="mt-1 text-sm opacity-80">{sub}</div>
+
+      {!anyRejected && !isComplete && (
+        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-white/15">
+          <div
+            className="h-full rounded-full bg-accent transition-all"
+            style={{ width: `${required ? Math.round((uploaded / required) * 100) : 0}%` }}
+          />
+        </div>
+      )}
+
+      <button
+        onClick={onOpen}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary"
+      >
+        {isComplete && !anyRejected ? <ShieldCheck className="h-4 w-4" /> : null}
+        {cta} <ArrowRight className="h-4 w-4" />
+      </button>
+    </div>
   );
 };
 

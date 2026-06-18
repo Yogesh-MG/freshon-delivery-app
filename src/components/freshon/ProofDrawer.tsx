@@ -1,4 +1,6 @@
 import { Stop } from "@/lib/types";
+import { NavTarget } from "@/lib/mapApps";
+import { NavChooser } from "./NavChooser";
 import { Camera, CheckCircle2, KeyRound, Navigation, ScanLine, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -22,6 +24,7 @@ export const ProofDrawer = ({
   const [resending, setResending] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [confetti, setConfetti] = useState<{ id: number; x: number; r: number; d: number; c: string }[]>([]);
+  const [navTarget, setNavTarget] = useState<NavTarget | null>(null);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
@@ -75,15 +78,14 @@ export const ProofDrawer = ({
             <div className="text-xl font-extrabold text-foreground">{stop.label}</div>
             <div className="text-xs text-muted-foreground">{stop.address}</div>
             {stop.latitude != null && stop.longitude != null && (
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${stop.latitude},${stop.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                type="button"
+                onClick={() => setNavTarget({ destination: { lat: stop.latitude!, lng: stop.longitude! } })}
                 className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-primary-soft px-3 py-1.5 text-xs font-bold text-primary"
               >
                 <Navigation className="h-3.5 w-3.5" />
                 Navigate to {stop.type === "pickup" ? "hub" : "drop-off"}
-              </a>
+              </button>
             )}
           </div>
           <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted" aria-label="Close">
@@ -251,6 +253,8 @@ export const ProofDrawer = ({
           )}
         </div>
       </div>
+
+      <NavChooser target={navTarget} onClose={() => setNavTarget(null)} />
     </div>
   );
 };

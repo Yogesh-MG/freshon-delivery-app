@@ -77,10 +77,12 @@ const Auth = () => {
           <div className="mt-8 animate-fade-up">
             <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">Partner Sign-in</div>
             <h1 className="mt-1 text-3xl font-extrabold leading-tight tracking-tight text-foreground text-balance">
-              {step === "phone" ? "Welcome back" : "Enter OTP"}
+              {step === "phone" ? "Sign in or join" : "Enter OTP"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {step === "phone" ? "Sign in with your phone number" : "Check your SMS for the code"}
+              {step === "phone"
+                ? "Enter your phone number — we'll send a code to verify. New partners get an account automatically."
+                : "Check your SMS for the code"}
             </p>
           </div>
 
@@ -109,14 +111,10 @@ const Auth = () => {
                 Send OTP
               </button>
 
-              <button
-                type="button"
-                onClick={() => navigate("/onboarding")}
-                className="w-full rounded-2xl border border-border bg-transparent py-3 text-center text-sm font-bold text-foreground transition hover:bg-muted"
-              >
-                <Plus className="mr-1 inline h-3.5 w-3.5" />
-                New partner? Complete your profile
-              </button>
+              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+                <Plus className="h-3.5 w-3.5 text-primary" />
+                First time? Verifying your number creates your partner account.
+              </p>
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="mt-5 space-y-3 animate-fade-up">

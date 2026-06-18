@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { CheckCircle2, ExternalLink, IndianRupee, Loader2, MapPin, Navigation, RefreshCw, Route, X } from "lucide-react";
 import { DeliveryTrip, TripStop } from "@/lib/deliveryTripService";
-import { openGoogleMapsRoute } from "@/lib/mapsUtils";
+import { NavTarget } from "@/lib/mapApps";
 import { BagScanFlow } from "./BagScanFlow";
 import { DeliveryMap, MapStop } from "./DeliveryMap";
+import { NavChooser } from "./NavChooser";
 
 export const TripView = ({
   trip,
@@ -37,6 +38,8 @@ export const TripView = ({
   const doneCount = dropoffs.filter((s) => s.is_completed).length;
   const awaitingPickup = trip.status === "ASSIGNED";
 
+  const [navTarget, setNavTarget] = useState<NavTarget | null>(null);
+
   const handleNavigate = () => {
     const origin = rider
       ? { lat: rider.latitude, lng: rider.longitude }
@@ -46,7 +49,7 @@ export const TripView = ({
 
     if (awaitingPickup) {
       if (!trip.hub?.latitude || !trip.hub?.longitude) return;
-      openGoogleMapsRoute({ origin, destination: { lat: trip.hub.latitude!, lng: trip.hub.longitude! } });
+      setNavTarget({ origin, destination: { lat: trip.hub.latitude!, lng: trip.hub.longitude! } });
       return;
     }
 
@@ -56,7 +59,7 @@ export const TripView = ({
     if (remaining.length === 0) return;
 
     const dest = remaining[remaining.length - 1];
-    openGoogleMapsRoute({
+    setNavTarget({
       origin,
       destination: { lat: dest.latitude!, lng: dest.longitude! },
       waypoints: remaining.slice(0, -1).map((s) => ({ lat: s.latitude!, lng: s.longitude! })),
@@ -69,7 +72,7 @@ export const TripView = ({
 
   return (
     <div>
-      <DeliveryMap stops={mapStops} polyline={trip.encoded_polyline} rider={rider} className="h-56" />
+      <DeliveryMap stops={mapStops} polyline={trip.encoded_polyline} rider={rider} enableLocate className="h-56" />
 
       <div className="space-y-4 px-5 pt-4">
       <div className="flex items-center justify-between rounded-3xl glass p-4 shadow-card-soft">
@@ -172,6 +175,8 @@ export const TripView = ({
         })}
       </div>
       </div>
+
+      <NavChooser target={navTarget} onClose={() => setNavTarget(null)} />
     </div>
   );
 };
