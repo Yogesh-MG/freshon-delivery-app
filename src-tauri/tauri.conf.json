@@ -12,6 +12,8 @@
   "app": {
     "windows": [
       {
+        "label": "main",
+        "url": "freshonota://localhost",
         "title": "Freshon Delivery",
         "width": 450,
         "height": 800,

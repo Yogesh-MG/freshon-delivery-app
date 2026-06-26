@@ -11,8 +11,21 @@ import Onboarding from "./pages/Onboarding.tsx";
 import Earnings from "./pages/Earnings.tsx";
 import Profile from "./pages/Profile.tsx";
 import { Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { createOtaUpdater } from "@freshon/api/ota";
 
 const queryClient = new QueryClient();
+
+// OTA self-updater — checks the cloud for a newer web bundle in the background
+// and stages it for the NEXT launch. No-op off-Tauri, so it's safe everywhere.
+const ota = createOtaUpdater({
+  app: "del",
+  baseUrl: "https://api.freshon.in/ota",
+  currentVersion: (import.meta.env.VITE_BUNDLE_VERSION as string) ?? "0",
+  nativeVersion: "1.0.0",
+  invoke,
+});
 
 const Protected = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -21,7 +34,16 @@ const Protected = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
+const App = () => {
+  // OTA: confirm THIS bundle booted (promotes a trial bundle to active and
+  // disarms native rollback), then check the cloud for a newer bundle in the
+  // background. Runs once; never blocks paint.
+  useEffect(() => {
+    ota.confirmBoot();
+    ota.checkInBackground();
+  }, []);
+
+  return (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
@@ -40,6 +62,7 @@ const App = () => (
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;
