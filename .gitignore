@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# TypeScript incremental build cache (emitted by `tsc -b` / the editor's TS server)
+*.tsbuildinfo
+
 # Vendored @freshon/api SDK — its compiled dist MUST be tracked so it ships
 # with the standalone/subtree clone (the `dist` rule above would otherwise drop it).
 !vendor/freshon-api/dist/
@@ -27,3 +30,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.env
+

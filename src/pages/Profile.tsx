@@ -39,6 +39,10 @@ const VEHICLE_NAMES = {
   VAN: "Van",
 };
 
+// Bicycles are no longer offered at sign-up, so they're not selectable here
+// either — but a legacy CYCLE partner still renders correctly above.
+const VEHICLE_OPTIONS = ["SCOOTER", "BIKE", "VAN"] as const;
+
 const Profile = () => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -242,8 +246,8 @@ const Profile = () => {
                         <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-muted-foreground">
                           Vehicle Type
                         </label>
-                        <div className="grid grid-cols-4 gap-2">
-                          {(Object.keys(VEHICLE_NAMES) as Array<keyof typeof VEHICLE_NAMES>).map((type) => {
+                        <div className="grid grid-cols-3 gap-2">
+                          {VEHICLE_OPTIONS.map((type) => {
                             const Icon = VEHICLE_ICONS[type];
                             const active = editForm.vehicle_type === type;
                             return (
