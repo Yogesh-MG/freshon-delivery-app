@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Vendored @freshon/api SDK — its compiled dist MUST be tracked so it ships
+# with the standalone/subtree clone (the `dist` rule above would otherwise drop it).
+!vendor/freshon-api/dist/
+!vendor/freshon-api/dist/**
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
