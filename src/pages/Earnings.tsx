@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   ArrowDownToLine,
-  ArrowLeft,
   Calendar,
   Clock,
   IndianRupee,
@@ -17,7 +15,8 @@ import {
   X,
 } from "lucide-react";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
-import { FreshOnLogo } from "@/components/freshon/Logo";
+import { Wordmark } from "@/components/freshon/Wordmark";
+import { BottomNav } from "@/components/freshon/BottomNav";
 import { DeliveryPartnerService, EarningsHistory, DailyEarning, DeliveryPartnerProfile } from "@/lib/deliveryPartnerService";
 import { DeliveryWalletService, WalletSummary, Withdrawal, WithdrawMethod } from "@/lib/deliveryWalletService";
 
@@ -28,7 +27,6 @@ const PERIOD_OPTIONS = [
 ];
 
 const Earnings = () => {
-  const navigate = useNavigate();
   const [history, setHistory] = useState<EarningsHistory | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
@@ -102,20 +100,12 @@ const Earnings = () => {
     <main className="h-dvh overflow-hidden">
       <PhoneFrame>
         <div className="flex h-full flex-col">
-          {/* Header */}
-          <header className="flex items-center justify-between px-5 pt-6">
-            <button
-              onClick={() => navigate("/")}
-              className="flex items-center gap-1 rounded-2xl bg-card px-3 py-2 text-sm font-semibold text-foreground ring-1 ring-border"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back
-            </button>
-            <FreshOnLogo />
-            <div className="w-10" />
+          <header className="px-7 pt-7">
+            <Wordmark />
           </header>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto space-y-4 px-5 pb-8 pt-5">
+          <div className="flex-1 overflow-y-auto space-y-4 px-5 pb-4 pt-5">
             <div>
               <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Earnings</h2>
               <p className="text-sm text-muted-foreground">Track your income and performance</p>
@@ -294,6 +284,8 @@ const Earnings = () => {
             )}
 
           </div>
+
+          <BottomNav active="earnings" />
         </div>
       </PhoneFrame>
 

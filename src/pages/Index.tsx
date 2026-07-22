@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowRight, ChevronLeft, Clock, Home, IndianRupee, Loader2, Lock, LogOut, Map, Package, Receipt, RefreshCw, Route, ShieldCheck, User, Wifi, WifiOff } from "lucide-react";
+import { ArrowRight, Clock, IndianRupee, Loader2, Lock, Package, Route, ShieldCheck } from "lucide-react";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
-import { FreshOnLogo } from "@/components/freshon/Logo";
+import { Wordmark } from "@/components/freshon/Wordmark";
+import { BottomNav } from "@/components/freshon/BottomNav";
 import { StatusToggle } from "@/components/freshon/StatusToggle";
 import { EarningsHeader } from "@/components/freshon/EarningsHeader";
 import { MissionCard } from "@/components/freshon/MissionCard";
 import { RadarWaiting } from "@/components/freshon/RadarWaiting";
 import { LoadMeter } from "@/components/freshon/LoadMeter";
-import { AlertHub } from "@/components/freshon/AlertHub";
 import { DeliveryMap } from "@/components/freshon/DeliveryMap";
 import { TripView } from "@/components/freshon/TripView";
 import { RouteList } from "@/components/freshon/RouteList";
@@ -21,11 +21,8 @@ import { DeliveryAssignmentService } from "@/lib/deliveryAssignmentService";
 import { DeliveryStatusService } from "@/lib/deliveryStatusService";
 import { DeliveryPartnerService } from "@/lib/deliveryPartnerService";
 import { DeliveryTrip, DeliveryTripService, TripStop } from "@/lib/deliveryTripService";
-import { useAuth } from "@/hooks/useAuth";
 import { useDeliverySocket } from "@/hooks/useDeliverySocket";
 import { TripOffer } from "@/components/freshon/TripOffer";
-
-type Screen = "dashboard" | "mission";
 
 const emptyStats: EarningsStats = {
   earnings: 0,
@@ -35,17 +32,103 @@ const emptyStats: EarningsStats = {
   rating: 5,
 };
 
+// Pull-to-refresh geometry, in px of finger travel (already damped).
+const PULL_THRESHOLD = 64;
+const PULL_MAX = 96;
+
+/**
+ * Drag-down-to-refresh on a scroll container. Listeners are attached natively
+ * because React registers `touchmove` as passive, which would forbid the
+ * preventDefault() we need to stop the browser's own overscroll.
+ */
+const usePullToRefresh = (
+  scrollRef: React.RefObject<HTMLDivElement>,
+  onRefresh: () => Promise<void>,
+) => {
+  const [pull, setPull] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  // Mirror of `pull` readable from the native handlers without re-registering.
+  const pullRef = useRef(0);
+  const busyRef = useRef(false);
+  const handlerRef = useRef(onRefresh);
+  handlerRef.current = onRefresh;
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    let startY = 0;
+    let tracking = false;
+
+    const setPullValue = (value: number) => {
+      pullRef.current = value;
+      setPull(value);
+    };
+
+    const start = (e: TouchEvent) => {
+      if (el.scrollTop > 0 || busyRef.current) return;
+      startY = e.touches[0].clientY;
+      tracking = true;
+    };
+
+    const move = (e: TouchEvent) => {
+      if (!tracking) return;
+      const delta = e.touches[0].clientY - startY;
+      // Dragging back up, or the list scrolled away under the finger — hand
+      // control back to normal scrolling.
+      if (delta <= 0 || el.scrollTop > 0) {
+        tracking = false;
+        setPullValue(0);
+        return;
+      }
+      e.preventDefault();
+      setPullValue(Math.min(PULL_MAX, delta * 0.5));
+    };
+
+    const end = async () => {
+      if (!tracking) return;
+      tracking = false;
+      const released = pullRef.current;
+      if (released < PULL_THRESHOLD) {
+        setPullValue(0);
+        return;
+      }
+      busyRef.current = true;
+      setRefreshing(true);
+      setPullValue(PULL_THRESHOLD);
+      try {
+        await handlerRef.current();
+      } finally {
+        busyRef.current = false;
+        setRefreshing(false);
+        setPullValue(0);
+      }
+    };
+
+    el.addEventListener("touchstart", start, { passive: true });
+    el.addEventListener("touchmove", move, { passive: false });
+    el.addEventListener("touchend", end);
+    el.addEventListener("touchcancel", end);
+    return () => {
+      el.removeEventListener("touchstart", start);
+      el.removeEventListener("touchmove", move);
+      el.removeEventListener("touchend", end);
+      el.removeEventListener("touchcancel", end);
+    };
+  }, [scrollRef]);
+
+  return { pull, refreshing };
+};
+
 const Index = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
 
   // Read the JWT that apiClient keeps in localStorage — reuse it for WS auth.
   const wsToken = typeof localStorage !== "undefined"
     ? localStorage.getItem("freshon_delivery_access")
     : null;
-  const { wsOnline, offeredTrip, claimTrip, dismissOffer } = useDeliverySocket(wsToken);
+  const { offeredTrip, claimTrip, dismissOffer } = useDeliverySocket(wsToken);
 
-  const [screen, setScreen] = useState<Screen>("dashboard");
   const [online, setOnline] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
@@ -54,7 +137,6 @@ const Index = () => {
   const [openStop, setOpenStop] = useState<Stop | null>(null);
   const [pickupScanStop, setPickupScanStop] = useState<Stop | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [trip, setTrip] = useState<DeliveryTrip | null>(null);
   const [availableTrips, setAvailableTrips] = useState<DeliveryTrip[]>([]);
   const [riderPos, setRiderPos] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -70,6 +152,8 @@ const Index = () => {
   } | null>(null);
   const isVerified = verification?.allVerified ?? false;
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const activeMission = useMemo(() => {
     return assignments.find((assignment) => assignment.id === activeAssignmentId)
       || assignments.find((assignment) => assignment.status !== "PENDING")
@@ -77,12 +161,7 @@ const Index = () => {
       || null;
   }, [activeAssignmentId, assignments]);
 
-  useEffect(() => {
-    refreshDashboard();
-  }, []);
-
   const refreshDashboard = async () => {
-    setRefreshing(true);
     const [assignmentResult, earningsResult, tripResult, availableResult, kycResult] = await Promise.all([
       DeliveryAssignmentService.getAssignments(),
       DeliveryStatusService.getEarnings(),
@@ -119,8 +198,15 @@ const Index = () => {
     if (availableResult.success) setAvailableTrips(availableResult.data || []);
 
     setLoading(false);
-    setRefreshing(false);
   };
+
+  const { pull, refreshing } = usePullToRefresh(scrollRef, refreshDashboard);
+
+  useEffect(() => {
+    refreshDashboard();
+    // Seed the map with the rider's own position so it isn't blank while idle.
+    getCurrentCoords().then((coords) => coords && setRiderPos(coords));
+  }, []);
 
   const acceptTrip = async (tripToAccept: DeliveryTrip) => {
     setTripBusy(true);
@@ -132,7 +218,6 @@ const Index = () => {
     }
     setTrip(result.data);
     setAvailableTrips((current) => current.filter((t) => t.id !== tripToAccept.id));
-    setScreen("mission");
     toast.success("Trip accepted");
   };
 
@@ -202,7 +287,6 @@ const Index = () => {
   const acceptMission = async (mission: Assignment) => {
     if (mission.status !== "PENDING") {
       setActiveAssignmentId(mission.id);
-      setScreen("mission");
       return;
     }
     const result = await DeliveryAssignmentService.acceptAssignment(mission.id);
@@ -212,7 +296,6 @@ const Index = () => {
     }
     setAssignments((current) => current.map((item) => item.id === mission.id ? result.data! : item));
     setActiveAssignmentId(result.data.id);
-    setScreen("mission");
     toast.success("Mission accepted");
   };
 
@@ -305,29 +388,24 @@ const Index = () => {
       return;
     }
     setTrip(null);
-    setScreen("dashboard");
     toast.success("Trip cancelled — returned to pool");
     refreshDashboard();
   };
 
   const handleClaimFromOffer = async (tripId: string) => {
     const result = await claimTrip(tripId);
-    if (result.success && result.trip) {
-      setTrip(result.trip);
-      setScreen("mission");
-    }
+    if (result.success && result.trip) setTrip(result.trip);
     return result;
-  };
-
-  const logout = async () => {
-    await signOut();
-    navigate("/auth", { replace: true });
   };
 
   if (loading) {
     return (
-      <main className="grid h-dvh place-items-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <main className="h-dvh overflow-hidden">
+        <PhoneFrame>
+          <div className="grid h-full place-items-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </PhoneFrame>
       </main>
     );
   }
@@ -335,86 +413,49 @@ const Index = () => {
   return (
     <main className="h-dvh overflow-hidden">
       <PhoneFrame>
-        {screen === "dashboard" && (
-          <div className="flex h-full flex-col">
-            <header className="flex items-center justify-between px-5 pt-6">
-              <FreshOnLogo />
-              <div className="flex items-center gap-2">
-                {wsOnline
-                  ? <Wifi className="h-4 w-4 text-green-500" title="Dispatch connected" />
-                  : <WifiOff className="h-4 w-4 text-muted-foreground/40" title="Dispatch offline" />
-                }
-                <button
-                  onClick={refreshDashboard}
-                  className="grid h-10 w-10 place-items-center rounded-2xl bg-card ring-1 ring-border"
-                  aria-label="Refresh assignments"
-                >
-                  <RefreshCw className={`h-4 w-4 text-foreground ${refreshing ? "animate-spin" : ""}`} />
-                </button>
-                <button
-                  onClick={() => navigate("/onboarding")}
-                  className="grid h-10 w-10 place-items-center rounded-2xl bg-card ring-1 ring-border"
-                  aria-label="Profile and KYC"
-                >
-                  <User className="h-4 w-4 text-foreground" />
-                </button>
-                <button
-                  onClick={logout}
-                  className="grid h-10 w-10 place-items-center rounded-2xl bg-card ring-1 ring-border"
-                  aria-label="Sign out"
-                >
-                  <LogOut className="h-4 w-4 text-foreground" />
-                </button>
+        <div className="flex h-full flex-col">
+          <header className="px-7 pt-7">
+            <Wordmark />
+            {(trip || activeMission) && (
+              <div className="mt-5 flex items-baseline justify-between text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+                <span className="text-foreground">{trip ? "Trip" : activeMission!.service}</span>
+                <span>{trip ? trip.status : activeMission!.status}</span>
               </div>
-            </header>
+            )}
+          </header>
 
-            <div className="flex-1 overflow-y-auto px-5 pt-5 pb-4 space-y-4">
+          <div
+            ref={scrollRef}
+            className="flex-1 overflow-y-auto overscroll-contain px-7 pb-4 pt-5"
+          >
+            {/* Pull-to-refresh affordance — grows with the drag, spins on release. */}
+            <div
+              className="flex items-end justify-center overflow-hidden"
+              style={{
+                height: refreshing ? PULL_THRESHOLD : pull,
+                transition: pull > 0 && !refreshing ? "none" : "height .2s ease",
+              }}
+            >
+              <Loader2
+                className={`mb-2 h-5 w-5 text-primary ${refreshing ? "animate-spin" : ""}`}
+                style={{
+                  opacity: Math.min(1, pull / PULL_THRESHOLD),
+                  transform: refreshing ? undefined : `rotate(${pull * 4}deg)`,
+                }}
+              />
+            </div>
+
+            <div className="space-y-4">
               {isVerified ? (
                 <StatusToggle online={online} onChange={updateOnline} />
               ) : (
                 <VerificationGate verification={verification} onOpen={() => navigate("/onboarding")} />
               )}
+
               <EarningsHeader stats={earnings} />
+
               {trip ? (
-                <ActiveTripCard trip={trip} onOpen={() => setScreen("mission")} />
-              ) : online && availableTrips.length > 0 ? (
-                <AvailableTripsList
-                  trips={availableTrips}
-                  busy={tripBusy}
-                  onAccept={acceptTrip}
-                />
-              ) : online && activeMission ? (
-                <MissionCard mission={activeMission} onAccept={() => acceptMission(activeMission)} />
-              ) : (
-                <RadarWaiting />
-              )}
-              <LoadMeter value={trip ? trip.stop_count : activeMission?.weight_kg || 0} capacity={15} />
-              <div>
-                <div className="mb-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Notification Hub</div>
-                <AlertHub assignmentCount={assignments.length} />
-              </div>
-            </div>
-
-            <BottomNav active="home" onMission={() => activeMission && setScreen("mission")} />
-          </div>
-        )}
-
-        {screen === "mission" && (trip || activeMission) && (
-          <div className="flex h-full flex-col">
-            <header className="flex items-center justify-between px-5 pt-6">
-              <button
-                onClick={() => setScreen("dashboard")}
-                className="flex items-center gap-1 rounded-2xl bg-card px-3 py-2 text-sm font-semibold text-foreground ring-1 ring-border"
-              >
-                <ChevronLeft className="h-4 w-4" /> Dashboard
-              </button>
-              <span className="rounded-full bg-gradient-amber px-3 py-1 text-xs font-bold uppercase tracking-wider text-accent-foreground shadow-glow-amber animate-amber-pulse">
-                {trip ? `TRIP · ${trip.status}` : `${activeMission!.service} · ${activeMission!.status}`}
-              </span>
-            </header>
-
-            {trip ? (
-              <div className="flex-1 overflow-y-auto pt-4 pb-8">
+                // TripView draws its own map + optimized stop list.
                 <TripView
                   trip={trip}
                   rider={riderPos}
@@ -425,53 +466,63 @@ const Index = () => {
                   onOpenStop={openTripStop}
                   onCancel={handleCancelTrip}
                 />
-              </div>
-            ) : activeMission ? (
-              <div className="flex-1 overflow-y-auto space-y-4 px-5 pt-4 pb-4">
-                <DeliveryMap
-                  stops={activeMission.stops
-                    // Stage the route: before pickup show rider → hub; once picked
-                    // up, show the route to the customer drop-off(s).
-                    .filter((s) =>
-                      activeMission.status === "PICKED_UP" || activeMission.status === "IN_TRANSIT"
-                        ? s.type === "dropoff"
-                        : s.type === "pickup",
-                    )
-                    .map((s) => ({
-                      latitude: s.latitude ?? null,
-                      longitude: s.longitude ?? null,
-                      type: s.type,
-                      label: s.label,
-                      sequence: s.sequence ?? 0,
-                      is_completed: completedStopIds.has(s.id),
-                    }))}
-                  rider={riderPos}
-                  enableNavigate
-                  enableLocate
-                  onLocate={setRiderPos}
-                />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Mission Stops</div>
-                    <div className="text-lg font-extrabold text-foreground">Optimized sequence · {activeMission.stops.length} stops</div>
-                  </div>
-                  <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-                    Live
-                  </span>
-                </div>
-                <RouteList
-                  mission={activeMission}
-                  completedStopIds={completedStopIds}
-                  onOpenStop={setOpenStop}
-                  onPickup={startPickupScan}
-                />
-                <FeeBreakdown mission={activeMission} />
-              </div>
-            ) : null}
+              ) : activeMission ? (
+                <>
+                  <DeliveryMap
+                    stops={activeMission.stops
+                      // Stage the route: before pickup show rider → hub; once picked
+                      // up, show the route to the customer drop-off(s).
+                      .filter((s) =>
+                        activeMission.status === "PICKED_UP" || activeMission.status === "IN_TRANSIT"
+                          ? s.type === "dropoff"
+                          : s.type === "pickup",
+                      )
+                      .map((s) => ({
+                        latitude: s.latitude ?? null,
+                        longitude: s.longitude ?? null,
+                        type: s.type,
+                        label: s.label,
+                        sequence: s.sequence ?? 0,
+                        is_completed: completedStopIds.has(s.id),
+                      }))}
+                    rider={riderPos}
+                    enableNavigate
+                    enableLocate
+                    onLocate={setRiderPos}
+                    className="h-56 rounded-3xl"
+                  />
+                  {activeMission.status === "PENDING" ? (
+                    <MissionCard mission={activeMission} onAccept={() => acceptMission(activeMission)} />
+                  ) : (
+                    <>
+                      <RouteList
+                        mission={activeMission}
+                        completedStopIds={completedStopIds}
+                        onOpenStop={setOpenStop}
+                        onPickup={startPickupScan}
+                      />
+                      <FeeBreakdown mission={activeMission} />
+                    </>
+                  )}
+                </>
+              ) : online && availableTrips.length > 0 ? (
+                // No map while idle — the trip pool is what matters here.
+                <AvailableTripsList trips={availableTrips} busy={tripBusy} onAccept={acceptTrip} />
+              ) : (
+                // Offline, or online with an empty pool: just the radar, with a
+                // green contact per order waiting in the pool.
+                <RadarWaiting count={availableTrips.length} />
+              )}
 
-            <BottomNav active="map" onMission={() => setScreen("mission")} />
+              {/* Load only means something while working — hidden when idle offline. */}
+              {(online || trip || activeMission) && (
+                <LoadMeter value={trip ? trip.stop_count : activeMission?.weight_kg || 0} capacity={15} />
+              )}
+            </div>
           </div>
-        )}
+
+          <BottomNav active="home" />
+        </div>
       </PhoneFrame>
 
       <ProofDrawer stop={openStop} onClose={() => setOpenStop(null)} onComplete={completeStop} onResend={resendDeliveryOtp} />
@@ -555,38 +606,6 @@ const VerificationGate = ({
         {isComplete && !anyRejected ? <ShieldCheck className="h-4 w-4" /> : null}
         {cta} <ArrowRight className="h-4 w-4" />
       </button>
-    </div>
-  );
-};
-
-const ActiveTripCard = ({ trip, onOpen }: { trip: DeliveryTrip; onOpen: () => void }) => {
-  const dropoffs = trip.stops.filter((s) => s.type === "dropoff");
-  const done = dropoffs.filter((s) => s.is_completed).length;
-  return (
-    <div className="relative overflow-hidden rounded-3xl bg-gradient-slate p-5 text-primary-foreground shadow-elevated animate-slide-up">
-      <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-primary/20 blur-2xl" />
-      <div className="relative">
-        <div className="flex items-center justify-between">
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-xs font-bold uppercase tracking-wider text-primary">
-            <Route className="h-3.5 w-3.5" /> Active trip
-          </span>
-          <span className="text-xs opacity-70">{trip.status}</span>
-        </div>
-        <div className="mt-3 text-2xl font-extrabold leading-tight">{dropoffs.length} stops · {Number(trip.total_distance_km).toFixed(1)} km</div>
-        <div className="mt-1 text-sm opacity-80">~{trip.total_duration_min} min · {done}/{dropoffs.length} delivered</div>
-        {trip.earnings != null && (
-          <div className="mt-1 flex items-center gap-1 text-sm font-bold text-accent">
-            <IndianRupee className="h-3.5 w-3.5" />
-            {Number(trip.earnings).toFixed(2)} this trip
-          </div>
-        )}
-        <button
-          onClick={onOpen}
-          className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-4 text-sm font-bold text-primary-foreground shadow-glow-primary"
-        >
-          Open route <ArrowRight className="h-4 w-4" />
-        </button>
-      </div>
     </div>
   );
 };
@@ -780,35 +799,5 @@ const getCurrentCoords = () => new Promise<{ latitude: number; longitude: number
     { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
   );
 });
-
-const BottomNav = ({ active, onMission }: { active: "home" | "map"; onMission: () => void }) => {
-  const navigate = useNavigate();
-  return (
-    <nav className="shrink-0 px-4 pb-4 pt-1">
-      <div className="glass mx-auto flex items-center justify-around rounded-3xl px-3 py-2 shadow-elevated">
-        <NavBtn icon={Home} label="Home" active={active === "home"} />
-        <button
-          onClick={onMission}
-          className="-mt-7 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary text-primary-foreground shadow-glow-primary"
-          aria-label="Mission"
-        >
-          <Map className="h-5 w-5" />
-        </button>
-        <NavBtn icon={Receipt} label="Earnings" onClick={() => navigate("/earnings")} />
-        <NavBtn icon={User} label="Profile" onClick={() => navigate("/profile")} />
-      </div>
-    </nav>
-  );
-};
-
-const NavBtn = ({ icon: Icon, label, active, onClick }: { icon: any; label: string; active?: boolean; onClick?: () => void }) => (
-  <button 
-    onClick={onClick}
-    className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-2 text-[10px] font-bold uppercase tracking-wider transition
-    ${active ? "text-primary" : "text-muted-foreground"}`}>
-    <Icon className="h-4 w-4" />
-    {label}
-  </button>
-);
 
 export default Index;

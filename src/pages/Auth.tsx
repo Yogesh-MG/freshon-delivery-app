@@ -4,6 +4,7 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
+import { Wordmark } from "@/components/freshon/Wordmark";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Loader2 } from "lucide-react";
 
@@ -187,12 +188,7 @@ const BikeMark = () => (
         <path d="M9 9.5 7.5 6.5" />
       </svg>
     </div>
-    <div className="text-center">
-      <div className="text-2xl font-extrabold tracking-tight text-foreground">
-        FreshOn<span className="text-primary"> Go</span>
-      </div>
-      <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Partner</div>
-    </div>
+    <Wordmark size="lg" />
   </div>
 );
 

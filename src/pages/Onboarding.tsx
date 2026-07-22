@@ -18,6 +18,7 @@ import {
     Zap,
 } from "lucide-react";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
+import { Wordmark } from "@/components/freshon/Wordmark";
 import { DeliveryPartnerService, DocType, KycDocument, KycStatus } from "@/lib/deliveryPartnerService";
 
 type DocTypeConfig = { id: DocType; label: string; hint: string };
@@ -32,7 +33,7 @@ const DOC_LIST: DocTypeConfig[] = [
 
 // lucide-react has no motorcycle glyph, so use a custom one drawn in lucide's
 // stroke style (24x24, currentColor, round caps) for the Motorbike option.
-const Motorbike = ({ className }: { className?: string }) => (
+export const Motorbike = ({ className }: { className?: string }) => (
     <svg
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 24 24"
@@ -751,15 +752,5 @@ const Onboarding = () => {
         </main>
     );
 };
-
-// Text-only brand mark — no icon, matching the sign-in screen's wordmark.
-const Wordmark = () => (
-    <div className="text-center">
-        <div className="text-xl font-extrabold tracking-tight text-foreground">
-            FreshOn<span className="text-primary"> Go</span>
-        </div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Partner</div>
-    </div>
-);
 
 export default Onboarding;

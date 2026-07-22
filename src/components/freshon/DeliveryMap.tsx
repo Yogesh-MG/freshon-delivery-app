@@ -231,7 +231,9 @@ export const DeliveryMap = ({
     }
   }, [stops, polyline, rider, routeGeom, myPos]);
 
-  const hasGeo = stops.some((s) => s.latitude != null && s.longitude != null);
+  // The map has something worth showing if any stop is geocoded — or, when
+  // there are no stops at all (idle home screen), if we know where the rider is.
+  const hasGeo = stops.some((s) => s.latitude != null && s.longitude != null) || !!me;
 
   return (
     <div className={`relative overflow-hidden ring-1 ring-border ${className || "h-52 rounded-3xl"}`}>
