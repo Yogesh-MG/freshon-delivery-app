@@ -1,0 +1,112 @@
+{
+  "name": "@freshon/api",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/modules/auth.d.ts",
+      "import": "./dist/modules/auth.js"
+    },
+    "./inventory": {
+      "types": "./dist/modules/inventory.d.ts",
+      "import": "./dist/modules/inventory.js"
+    },
+    "./orders": {
+      "types": "./dist/modules/orders.d.ts",
+      "import": "./dist/modules/orders.js"
+    },
+    "./delivery": {
+      "types": "./dist/modules/delivery.d.ts",
+      "import": "./dist/modules/delivery.js"
+    },
+    "./wallet": {
+      "types": "./dist/modules/wallet.d.ts",
+      "import": "./dist/modules/wallet.js"
+    },
+    "./picker": {
+      "types": "./dist/modules/picker.d.ts",
+      "import": "./dist/modules/picker.js"
+    },
+    "./delivery-partner": {
+      "types": "./dist/modules/delivery-partner.d.ts",
+      "import": "./dist/modules/delivery-partner.js"
+    },
+    "./farmer": {
+      "types": "./dist/modules/farmer.d.ts",
+      "import": "./dist/modules/farmer.js"
+    },
+    "./pos": {
+      "types": "./dist/modules/pos.d.ts",
+      "import": "./dist/modules/pos.js"
+    },
+    "./hr": {
+      "types": "./dist/modules/hr.d.ts",
+      "import": "./dist/modules/hr.js"
+    },
+    "./fos": {
+      "types": "./dist/modules/fos.d.ts",
+      "import": "./dist/modules/fos.js"
+    },
+    "./printer": {
+      "types": "./dist/modules/printer.d.ts",
+      "import": "./dist/modules/printer.js"
+    },
+    "./printjobs": {
+      "types": "./dist/modules/printjobs.d.ts",
+      "import": "./dist/modules/printjobs.js"
+    },
+    "./cashtrail": {
+      "types": "./dist/modules/cashtrail.d.ts",
+      "import": "./dist/modules/cashtrail.js"
+    },
+    "./support": {
+      "types": "./dist/modules/support.d.ts",
+      "import": "./dist/modules/support.js"
+    },
+    "./ws": {
+      "types": "./dist/modules/ws.d.ts",
+      "import": "./dist/modules/ws.js"
+    },
+    "./branding": {
+      "types": "./dist/branding.d.ts",
+      "import": "./dist/branding.js"
+    },
+    "./receipt": {
+      "types": "./dist/receipt.d.ts",
+      "import": "./dist/receipt.js"
+    },
+    "./ota": {
+      "types": "./dist/ota.d.ts",
+      "import": "./dist/ota.js"
+    },
+    "./assets/*": "./assets/*"
+  },
+  "files": [
+    "dist",
+    "src",
+    "assets"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "axios": "^1.15.2"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.10"
+  }
+}
