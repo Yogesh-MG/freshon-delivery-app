@@ -3,6 +3,21 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
+# Vite inlines VITE_* vars at build time, so they must be present during
+# `npm run build` — not at container runtime. .env is gitignored, so pass them
+# in explicitly:
+#   docker build -f Dockerfile.prod \
+#     --build-arg VITE_API_URL=https://api.example.com \
+#     --build-arg VITE_WS_URL=wss://api.example.com \
+#     -t freshon-delivery .
+ARG VITE_API_URL
+ARG VITE_WS_URL
+ARG BUNDLE_VERSION
+
+ENV VITE_API_URL=${VITE_API_URL} \
+    VITE_WS_URL=${VITE_WS_URL} \
+    BUNDLE_VERSION=${BUNDLE_VERSION}
+
 # Copy package files
 COPY package*.json ./
 
@@ -12,11 +27,18 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+# Fail loudly rather than shipping a bundle pinned to http://localhost:8000
+RUN test -n "$VITE_API_URL" || \
+    (echo "ERROR: --build-arg VITE_API_URL=... is required" >&2 && exit 1)
+
 # Build for production
 RUN npm run build
 
 # Production stage with nginx
 FROM nginx:alpine
+
+# SPA routing: client-side routes must fall back to index.html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets
 COPY --from=builder /app/dist /usr/share/nginx/html

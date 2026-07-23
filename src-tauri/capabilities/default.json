@@ -8,7 +8,6 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "shell:default",
-    "freshon-ota:default"
+    "shell:default"
   ]
 }

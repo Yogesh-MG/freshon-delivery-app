@@ -1,0 +1,15 @@
+node_modules
+dist
+dist-ssr
+.git
+.env
+*.log
+*.tsbuildinfo
+
+# Rust/Tauri build artifacts — multi-GB and irrelevant to the web image
+src-tauri/target
+src-tauri/gen/android/app/build
+src-tauri/gen/apple
+
+Dockerfile*
+.dockerignore

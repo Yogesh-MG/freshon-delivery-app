@@ -9,6 +9,8 @@ import {
     Loader2,
     LogOut,
     MapPin,
+    Car,
+    Banknote,
     Package,
     Phone,
     Star,
@@ -340,7 +342,7 @@ const Profile = () => {
                                             </div>
                                             <div className="flex items-center gap-3">
                                                 <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                                                    <MapPin className="h-5 w-5" />
+                                                    <Car className="h-5 w-5" />
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-bold text-foreground">

@@ -5,7 +5,7 @@
     "identifier": "com.freshon.delivery",
     "build": {
         "frontendDist": "../dist",
-        "devUrl": "http://localhost:3000",
+        "devUrl": "http://localhost:8100",
         "beforeDevCommand": "npm run dev",
         "beforeBuildCommand": "npm run build"
     },
@@ -13,7 +13,6 @@
         "windows": [
             {
                 "label": "main",
-                "url": "freshonota://localhost",
                 "title": "Freshon Delivery",
                 "width": 450,
                 "height": 800,

@@ -25,6 +25,11 @@ tauri = { version = "2.11.2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
-# Shared OTA WebView self-update (serves active bundle via custom scheme,
-# embedded fallback + rollback). See packages/tauri-plugin-freshon-ota.
-tauri-plugin-freshon-ota = { path = "../../packages/tauri-plugin-freshon-ota" }
+# TEMPORARILY DISABLED — the crate lives in the monorepo at
+# packages/tauri-plugin-freshon-ota and is absent from this subtree clone, so
+# cargo can't resolve the path and the Android build fails outright. Restore
+# this line (and the three other sites below) once the crate is available:
+#   src-tauri/src/lib.rs                  .plugin(tauri_plugin_freshon_ota::init())
+#   src-tauri/capabilities/default.json   "freshon-ota:default"
+#   src-tauri/tauri.conf.json             window url "freshonota://localhost"
+# tauri-plugin-freshon-ota = { path = "../../packages/tauri-plugin-freshon-ota" }
