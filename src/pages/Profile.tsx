@@ -16,8 +16,12 @@ import {
     Star,
     Truck,
     User,
+    Volume2,
+    VolumeX,
     Zap,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { isMuted, play, setMuted } from "@/lib/sound";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
 import { Wordmark } from "@/components/freshon/Wordmark";
 import { BottomNav } from "@/components/freshon/BottomNav";
@@ -51,6 +55,9 @@ const Profile = () => {
     const navigate = useNavigate();
     const { signOut } = useAuth();
     const [profile, setProfile] = useState<DeliveryPartnerProfile | null>(null);
+    // Seeded from localStorage inside the sound module, so the choice survives
+    // restarts and OTA bundle swaps.
+    const [soundMuted, setSoundMuted] = useState(isMuted);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [editing, setEditing] = useState(false);
@@ -532,6 +539,30 @@ const Profile = () => {
                                             No payout method set. Tap <span className="font-bold text-foreground">Edit</span> to add your UPI or bank account.
                                         </div>
                                     )}
+                                </div>
+
+                                {/* Alert sounds */}
+                                <div className="flex items-center justify-between rounded-2xl bg-card p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                                            {soundMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-bold text-foreground">Alert sounds</div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {soundMuted ? "Muted — you'll still feel vibrations" : "Chime on new trip offers"}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Switch
+                                        checked={!soundMuted}
+                                        onCheckedChange={(on) => {
+                                            setMuted(!on);
+                                            setSoundMuted(!on);
+                                            if (on) play("success"); // preview the cue they just re-enabled
+                                        }}
+                                        aria-label="Toggle alert sounds"
+                                    />
                                 </div>
 
                                 {/* Logout */}

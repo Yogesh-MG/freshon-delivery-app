@@ -3,8 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { decodePolyline } from "@/lib/polyline";
 import { fetchOsrmRoute } from "@/lib/osrmRoute";
-import { NavTarget } from "@/lib/mapApps";
-import { NavChooser } from "./NavChooser";
+import { NavTarget, openInGoogleMaps } from "@/lib/mapApps";
 import { LocateFixed, Loader2, Navigation } from "lucide-react";
 
 export interface MapStop {
@@ -18,6 +17,13 @@ export interface MapStop {
 
 interface DeliveryMapProps {
   stops: MapStop[];
+  /**
+   * Stops the "Navigate" button hands to the external map app, when that must
+   * differ from what's drawn. Used so the rider can *view* the drop-off leg
+   * while navigation stays pinned to the hub until every bag is scanned.
+   * Defaults to `stops`.
+   */
+  navStops?: MapStop[];
   /** Pre-computed encoded route (e.g. backend-optimized trip). Takes precedence over OSRM. */
   polyline?: string;
   rider?: { latitude: number; longitude: number } | null;
@@ -76,6 +82,7 @@ const riderIcon = () =>
 
 export const DeliveryMap = ({
   stops,
+  navStops,
   polyline,
   rider,
   enableRouting = true,
@@ -89,7 +96,6 @@ export const DeliveryMap = ({
   const layerRef = useRef<L.LayerGroup | null>(null);
   // Road geometry fetched from OSRM when no encoded polyline is supplied.
   const [routeGeom, setRouteGeom] = useState<[number, number][] | null>(null);
-  const [navOpen, setNavOpen] = useState(false);
   // Locally-fetched "you are here" position (from the locate button).
   const [myPos, setMyPos] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
@@ -124,15 +130,17 @@ export const DeliveryMap = ({
   const waypoints = orderedWaypoints(stops, rider);
 
   // Where "Navigate" routes to: last waypoint is the destination; the rider (if
-  // present) is the origin and any middle stops become waypoints.
+  // present) is the origin and any middle stops become waypoints. Built from
+  // `navStops` when the caller gates navigation separately from the drawn route.
+  const navWaypoints = orderedWaypoints(navStops ?? stops, rider);
   const navTarget: NavTarget | null = (() => {
-    if (waypoints.length === 0) return null;
-    const destination = waypoints[waypoints.length - 1];
-    const hasRiderOrigin = !!rider && waypoints.length >= 2;
+    if (navWaypoints.length === 0) return null;
+    const destination = navWaypoints[navWaypoints.length - 1];
+    const hasRiderOrigin = !!rider && navWaypoints.length >= 2;
     return {
-      origin: hasRiderOrigin ? waypoints[0] : null,
+      origin: hasRiderOrigin ? navWaypoints[0] : null,
       destination,
-      waypoints: hasRiderOrigin ? waypoints.slice(1, -1) : waypoints.slice(0, -1),
+      waypoints: hasRiderOrigin ? navWaypoints.slice(1, -1) : navWaypoints.slice(0, -1),
     };
   })();
   // Stable key so the fetch effect only re-runs when the actual coordinates change.
@@ -236,7 +244,12 @@ export const DeliveryMap = ({
   const hasGeo = stops.some((s) => s.latitude != null && s.longitude != null) || !!me;
 
   return (
-    <div className={`relative overflow-hidden ring-1 ring-border ${className || "h-52 rounded-3xl"}`}>
+    // `isolate` is load-bearing: Leaflet stamps z-index 400–1000 onto its own
+    // panes and controls. Without a stacking context here those values compete
+    // in the ROOT context and paint the map *over* fixed overlays — the QR
+    // scanner (z-60), trip offer (z-70) and nav chooser (z-80) all lose. A bare
+    // `relative` doesn't create one, so isolation:isolate is what contains them.
+    <div className={`relative isolate overflow-hidden ring-1 ring-border ${className || "h-52 rounded-3xl"}`}>
       <div ref={containerRef} className="h-full w-full" />
       {!hasGeo && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center bg-card/80 text-center text-xs font-semibold text-muted-foreground">
@@ -257,13 +270,12 @@ export const DeliveryMap = ({
       {enableNavigate && navTarget && (
         <button
           type="button"
-          onClick={() => setNavOpen(true)}
+          onClick={() => openInGoogleMaps(navTarget)}
           className="absolute bottom-3 right-3 z-[400] flex items-center gap-1.5 rounded-full bg-gradient-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-glow-primary active:scale-95"
         >
           <Navigation className="h-4 w-4" /> Navigate
         </button>
       )}
-      <NavChooser target={navOpen ? navTarget : null} onClose={() => setNavOpen(false)} />
     </div>
   );
 };

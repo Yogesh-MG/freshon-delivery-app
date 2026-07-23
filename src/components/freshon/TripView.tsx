@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ExternalLink, IndianRupee, Loader2, MapPin, Navigation, RefreshCw, Route, X } from "lucide-react";
 import { DeliveryTrip, TripStop } from "@/lib/deliveryTripService";
-import { NavTarget } from "@/lib/mapApps";
+import { openInGoogleMaps } from "@/lib/mapApps";
 import { BagScanFlow } from "./BagScanFlow";
 import { DeliveryMap, MapStop } from "./DeliveryMap";
-import { NavChooser } from "./NavChooser";
+import { RouteToggle, RouteDest } from "./RouteToggle";
 
 export const TripView = ({
   trip,
@@ -14,10 +14,14 @@ export const TripView = ({
   onOpenStop,
   onReoptimize,
   onCancel,
+  onRefreshPosition,
   busy,
 }: {
   trip: DeliveryTrip;
   rider: { latitude: number; longitude: number } | null;
+  /** Re-sample the rider's GPS. Called when the map destination is toggled so
+   *  the drawn leg starts from where they are now, not where they were. */
+  onRefreshPosition?: () => void;
   onConfirmPickup: () => void;
   onTripUpdate: (trip: DeliveryTrip) => void;
   onOpenStop: (stop: TripStop) => void;
@@ -38,18 +42,63 @@ export const TripView = ({
   const doneCount = dropoffs.filter((s) => s.is_completed).length;
   const awaitingPickup = trip.status === "ASSIGNED";
 
-  const [navTarget, setNavTarget] = useState<NavTarget | null>(null);
 
-  const handleNavigate = () => {
-    const origin = rider
-      ? { lat: rider.latitude, lng: rider.longitude }
-      : trip.hub?.latitude != null && trip.hub?.longitude != null
-      ? { lat: trip.hub.latitude!, lng: trip.hub.longitude! }
+  /**
+   * Where the external Google Maps hand-off points. Gated on the hub handover:
+   * every bag must be scanned before navigation will take the rider onward, so
+   * nobody leaves the hub with an unaccounted bag.
+   */
+  const allBagsScanned = dropoffs.length > 0 && dropoffs.every((s) => s.bag_scanned);
+  const navDest: RouteDest = awaitingPickup && !allBagsScanned ? "hub" : "dropoff";
+
+  // What the on-screen map draws — the rider's own choice, so they can preview
+  // the drop-off route while still scanning at the hub. Follows `navDest` by
+  // default and re-syncs whenever the gate opens or the trip changes.
+  const [mapDest, setMapDest] = useState<RouteDest>(navDest);
+  useEffect(() => {
+    setMapDest(navDest);
+  }, [navDest, trip.id]);
+
+  // Re-fix the origin whenever the drawn leg flips. Held in a ref because the
+  // parent passes an inline callback — a new identity every render would re-fire
+  // this endlessly.
+  const refreshRef = useRef(onRefreshPosition);
+  refreshRef.current = onRefreshPosition;
+  useEffect(() => {
+    refreshRef.current?.();
+  }, [mapDest]);
+
+  const hubStop: MapStop | null =
+    trip.hub?.latitude != null && trip.hub?.longitude != null
+      ? {
+          latitude: trip.hub.latitude,
+          longitude: trip.hub.longitude,
+          type: "pickup",
+          label: trip.hub.label || "Hub",
+          sequence: 0,
+        }
       : null;
 
-    if (awaitingPickup) {
-      if (!trip.hub?.latitude || !trip.hub?.longitude) return;
-      setNavTarget({ origin, destination: { lat: trip.hub.latitude!, lng: trip.hub.longitude! } });
+  // In hub mode drop the optimized polyline entirely — it describes the whole
+  // trip, not the leg the rider asked for, and drawing both is just noise.
+  const shownStops = mapDest === "hub" ? (hubStop ? [hubStop] : []) : mapStops;
+  const shownPolyline = mapDest === "hub" ? undefined : trip.encoded_polyline;
+
+  // Hand-off to Google Maps / Waze follows the SAME toggle as the in-app map, so
+  // whichever leg the rider is looking at is the leg that opens externally.
+  const handleNavigate = () => {
+    // The rider's own position is the origin. When it's unknown we pass null
+    // rather than substituting the hub — every map app falls back to the live
+    // device location, which beats a guessed origin (and routing hub → hub is
+    // meaningless).
+    const origin = rider ? { lat: rider.latitude, lng: rider.longitude } : null;
+
+    if (navDest === "hub") {
+      if (!hubStop) return;
+      openInGoogleMaps({
+        origin,
+        destination: { lat: hubStop.latitude!, lng: hubStop.longitude! },
+      });
       return;
     }
 
@@ -58,21 +107,35 @@ export const TripView = ({
       .sort((a, b) => a.sequence - b.sequence);
     if (remaining.length === 0) return;
 
+    // Google Maps takes the full chain: origin → waypoints → final destination,
+    // in the backend's optimized order. Waze and the generic geo: intent only
+    // support a single destination and ignore the waypoints (see buildMapUrl).
     const dest = remaining[remaining.length - 1];
-    setNavTarget({
+    openInGoogleMaps({
       origin,
       destination: { lat: dest.latitude!, lng: dest.longitude! },
       waypoints: remaining.slice(0, -1).map((s) => ({ lat: s.latitude!, lng: s.longitude! })),
     });
   };
 
-  const canNavigate = awaitingPickup
-    ? !!(trip.hub?.latitude && trip.hub?.longitude)
-    : dropoffs.some((s) => !s.is_completed && s.latitude != null && s.longitude != null);
+  const canNavigate =
+    navDest === "hub"
+      ? !!hubStop
+      : dropoffs.some((s) => !s.is_completed && s.latitude != null && s.longitude != null);
 
   return (
     <div>
-      <DeliveryMap stops={mapStops} polyline={trip.encoded_polyline} rider={rider} enableLocate className="h-56" />
+      <DeliveryMap stops={shownStops} polyline={shownPolyline} rider={rider} enableLocate className="h-56" />
+
+      <div className="px-5 pt-3">
+        <RouteToggle
+          value={mapDest}
+          onChange={setMapDest}
+          hubEnabled={!!hubStop}
+          dropoffEnabled={dropoffs.length > 0}
+          dropoffLabel="Stops"
+        />
+      </div>
 
       <div className="space-y-4 px-5 pt-4">
       <div className="flex items-center justify-between rounded-3xl glass p-4 shadow-card-soft">
@@ -110,7 +173,7 @@ export const TripView = ({
         aria-label="Open in Google Maps"
       >
         <ExternalLink className="h-4 w-4" />
-        {awaitingPickup ? "Navigate to Hub" : "Navigate Deliveries"}
+        {navDest === "hub" ? "Navigate to Hub" : "Navigate Deliveries"}
       </button>
 
       {awaitingPickup && (
@@ -175,8 +238,6 @@ export const TripView = ({
         })}
       </div>
       </div>
-
-      <NavChooser target={navTarget} onClose={() => setNavTarget(null)} />
     </div>
   );
 };

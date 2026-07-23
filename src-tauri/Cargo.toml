@@ -25,6 +25,7 @@ tauri = { version = "2.11.2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-notification = "2.3.3"
 # TEMPORARILY DISABLED — the crate lives in the monorepo at
 # packages/tauri-plugin-freshon-ota and is absent from this subtree clone, so
 # cargo can't resolve the path and the Android build fails outright. Restore

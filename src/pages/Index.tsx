@@ -16,6 +16,9 @@ import { RouteList } from "@/components/freshon/RouteList";
 import { FeeBreakdown } from "@/components/freshon/FeeBreakdown";
 import { ProofDrawer } from "@/components/freshon/ProofDrawer";
 import { QrScanner } from "@/components/freshon/QrScanner";
+import { RouteToggle, RouteDest } from "@/components/freshon/RouteToggle";
+import { play } from "@/lib/sound";
+import { requestNotificationPermission } from "@/lib/notify";
 import { Assignment, EarningsStats, Stop } from "@/lib/types";
 import { DeliveryAssignmentService } from "@/lib/deliveryAssignmentService";
 import { DeliveryStatusService } from "@/lib/deliveryStatusService";
@@ -161,6 +164,38 @@ const Index = () => {
       || null;
   }, [activeAssignmentId, assignments]);
 
+  // The leg the rider has actually reached. This gates the external Navigate
+  // hand-off — until the handover QR is scanned, navigation points at the hub.
+  const missionStageDest: RouteDest =
+    activeMission?.status === "PICKED_UP" || activeMission?.status === "IN_TRANSIT"
+      ? "dropoff"
+      : "hub";
+
+  // What the on-screen map draws. Free for the rider to flip so they can preview
+  // the drop-off leg while still at the hub; defaults to wherever they are in the
+  // flow, and re-syncs when the stage or mission changes.
+  const [routeDest, setRouteDest] = useState<RouteDest>("hub");
+  useEffect(() => {
+    setRouteDest(missionStageDest);
+  }, [missionStageDest, activeMission?.id]);
+
+  /**
+   * Work that pins the rider online. Going offline mid-delivery would strand a
+   * customer's order with no assigned rider, so the status toggle is blocked
+   * (and, once the goods are physically in hand, hidden entirely).
+   */
+  const tripInProgress = !!trip && trip.status !== "COMPLETED" && trip.status !== "CANCELLED";
+  const missionInProgress =
+    !!activeMission && activeMission.status !== "PENDING" && activeMission.status !== "DELIVERED";
+
+  /**
+   * True from the moment work is accepted until it completes or is cancelled.
+   * While set, the online/offline control and the earnings header are hidden —
+   * the screen is only about running the trip. Cancelling or finishing clears
+   * this and both come straight back.
+   */
+  const hasActiveWork = tripInProgress || missionInProgress;
+
   const refreshDashboard = async () => {
     const [assignmentResult, earningsResult, tripResult, availableResult, kycResult] = await Promise.all([
       DeliveryAssignmentService.getAssignments(),
@@ -214,11 +249,13 @@ const Index = () => {
     setTripBusy(false);
     if (!result.success || !result.data) {
       toast.error(result.error || "Unable to accept trip");
+      play("error");
       return;
     }
     setTrip(result.data);
     setAvailableTrips((current) => current.filter((t) => t.id !== tripToAccept.id));
     toast.success("Trip accepted");
+    play("success");
   };
 
   const confirmTripPickup = async () => {
@@ -228,10 +265,12 @@ const Index = () => {
     setTripBusy(false);
     if (!result.success || !result.data) {
       toast.error(result.error || "Unable to confirm pickup");
+      play("error");
       return;
     }
     setTrip(result.data);
     toast.success("All orders picked up");
+    play("success");
   };
 
   const reoptimizeTrip = async () => {
@@ -241,10 +280,12 @@ const Index = () => {
     setTripBusy(false);
     if (!result.success || !result.data) {
       toast.error(result.error || "Unable to re-optimize");
+      play("error");
       return;
     }
     setTrip(result.data);
     toast.success("Route re-optimized");
+    play("tick");
   };
 
   const openTripStop = (tripStop: TripStop) => {
@@ -266,11 +307,24 @@ const Index = () => {
   const updateOnline = async (nextOnline: boolean) => {
     // A partner can only go online once verified. Guard here too in case the UI
     // is bypassed.
+    // Hard block: a rider holding an accepted trip or mission cannot drop off the
+    // grid. The order is already committed to them, so going offline would orphan
+    // it until an operator noticed.
+    if (!nextOnline && hasActiveWork) {
+      toast.error("Finish or cancel your active trip before going offline");
+      play("error");
+      return;
+    }
     if (nextOnline && !isVerified) {
       toast.error("Complete verification to go online");
+      play("error");
       navigate("/onboarding");
       return;
     }
+    // Going online is the moment trip offers start arriving, and it's a real
+    // user gesture — the only context in which Android 13+ will show the
+    // POST_NOTIFICATIONS prompt. Ask here rather than on first launch.
+    if (nextOnline) void requestNotificationPermission();
     const previous = online;
     setOnline(nextOnline);
     const coords = await getCurrentCoords();
@@ -279,8 +333,10 @@ const Index = () => {
     if (!result.success) {
       setOnline(previous);
       toast.error(result.error || "Unable to update status");
+      play("error");
       return;
     }
+    play("tick");
     if (nextOnline) refreshDashboard();
   };
 
@@ -292,11 +348,13 @@ const Index = () => {
     const result = await DeliveryAssignmentService.acceptAssignment(mission.id);
     if (!result.success || !result.data) {
       toast.error(result.error || "Unable to accept mission");
+      play("error");
       return;
     }
     setAssignments((current) => current.map((item) => item.id === mission.id ? result.data! : item));
     setActiveAssignmentId(result.data.id);
     toast.success("Mission accepted");
+    play("success");
   };
 
   // Pickup now requires scanning the handover QR printed on the bag.
@@ -307,14 +365,19 @@ const Index = () => {
 
   const confirmPickup = async (stop: Stop, handoverCode: string) => {
     if (!activeMission) return;
+    // The QR read itself landed — acknowledge it before the round-trip so the
+    // rider can lower the phone instead of holding it on the bag.
+    play("scan");
     const result = await DeliveryAssignmentService.markPickedUp(activeMission.id, handoverCode);
     if (!result.success) {
       toast.error(result.error || "Unable to confirm pickup");
+      play("error");
       return;
     }
     setCompletedStopIds((current) => new Set(current).add(stop.id));
     setAssignments((current) => current.map((item) => item.id === activeMission.id ? { ...item, status: "PICKED_UP" } : item));
     toast.success("Pickup confirmed");
+    play("success");
   };
 
   const completeStop = async (stop: Stop, proof: { type: "otp" | "photo"; otpCode?: string; photo?: File }) => {
@@ -330,6 +393,7 @@ const Index = () => {
       const upload = await DeliveryStatusService.uploadProof(formData);
       if (!upload.success) {
         toast.error(upload.error || "Photo upload failed");
+        play("error");
         return false;
       }
     }
@@ -357,6 +421,7 @@ const Index = () => {
     );
     if (!result.success) {
       toast.error(result.error || "Unable to complete stop");
+      play("error");
       return false;
     }
 
@@ -366,6 +431,7 @@ const Index = () => {
       setAssignments((current) => current.map((item) => item.id === activeMission.id ? { ...item, status: "IN_TRANSIT" } : item));
     }
     toast.success("Stop completed");
+    play("success");
     refreshDashboard();
     return true;
   };
@@ -385,10 +451,12 @@ const Index = () => {
     setTripBusy(false);
     if (!result.success) {
       toast.error(result.error || "Unable to cancel trip");
+      play("error");
       return;
     }
     setTrip(null);
     toast.success("Trip cancelled — returned to pool");
+    play("tick");
     refreshDashboard();
   };
 
@@ -446,13 +514,19 @@ const Index = () => {
             </div>
 
             <div className="space-y-4">
-              {isVerified ? (
-                <StatusToggle online={online} onChange={updateOnline} />
-              ) : (
-                <VerificationGate verification={verification} onOpen={() => navigate("/onboarding")} />
-              )}
+              {/* Hidden for the whole life of an active trip — they return as
+                  soon as it completes or is cancelled. */}
+              {!hasActiveWork && (
+                <>
+                  {isVerified ? (
+                    <StatusToggle online={online} onChange={updateOnline} />
+                  ) : (
+                    <VerificationGate verification={verification} onOpen={() => navigate("/onboarding")} />
+                  )}
 
-              <EarningsHeader stats={earnings} />
+                  <EarningsHeader stats={earnings} />
+                </>
+              )}
 
               {trip ? (
                 // TripView draws its own map + optimized stop list.
@@ -465,26 +539,30 @@ const Index = () => {
                   onReoptimize={reoptimizeTrip}
                   onOpenStop={openTripStop}
                   onCancel={handleCancelTrip}
+                  onRefreshPosition={() => {
+                    void getCurrentCoords().then((coords) => coords && setRiderPos(coords));
+                  }}
                 />
               ) : activeMission ? (
                 <>
+                  <RouteToggle
+                    value={routeDest}
+                    onChange={(next) => {
+                      setRouteDest(next);
+                      play("tick");
+                      // Re-fix the origin on every flip — the rider has usually
+                      // moved since the last GPS sample, and a route drawn from a
+                      // stale point is worse than no route.
+                      void getCurrentCoords().then((coords) => coords && setRiderPos(coords));
+                    }}
+                    hubEnabled={activeMission.stops.some((s) => s.type === "pickup" && s.latitude != null)}
+                    dropoffEnabled={activeMission.stops.some((s) => s.type === "dropoff" && s.latitude != null)}
+                  />
                   <DeliveryMap
-                    stops={activeMission.stops
-                      // Stage the route: before pickup show rider → hub; once picked
-                      // up, show the route to the customer drop-off(s).
-                      .filter((s) =>
-                        activeMission.status === "PICKED_UP" || activeMission.status === "IN_TRANSIT"
-                          ? s.type === "dropoff"
-                          : s.type === "pickup",
-                      )
-                      .map((s) => ({
-                        latitude: s.latitude ?? null,
-                        longitude: s.longitude ?? null,
-                        type: s.type,
-                        label: s.label,
-                        sequence: s.sequence ?? 0,
-                        is_completed: completedStopIds.has(s.id),
-                      }))}
+                    // Drawn route follows the rider's toggle…
+                    stops={toMapStops(activeMission.stops, routeDest, completedStopIds)}
+                    // …but Navigate stays pinned to the stage they've reached.
+                    navStops={toMapStops(activeMission.stops, missionStageDest, completedStopIds)}
                     rider={riderPos}
                     enableNavigate
                     enableLocate
@@ -784,6 +862,23 @@ const BatchTripCard = ({ trip, busy, onAccept }: { trip: DeliveryTrip; busy?: bo
     </div>
   );
 };
+
+/**
+ * Project a mission's stops onto one leg for the map. Passing a single leg means
+ * the map draws one rider → destination route rather than chaining hub and drops
+ * into a single line.
+ */
+const toMapStops = (stops: Stop[], leg: RouteDest, completed: Set<string>) =>
+  stops
+    .filter((s) => (leg === "hub" ? s.type === "pickup" : s.type === "dropoff"))
+    .map((s) => ({
+      latitude: s.latitude ?? null,
+      longitude: s.longitude ?? null,
+      type: s.type,
+      label: s.label,
+      sequence: s.sequence ?? 0,
+      is_completed: completed.has(s.id),
+    }));
 
 const getCurrentCoords = () => new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
   if (!navigator.geolocation) {

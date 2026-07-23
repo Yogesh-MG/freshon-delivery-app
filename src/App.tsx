@@ -10,10 +10,12 @@ import Auth from "./pages/Auth.tsx";
 import Onboarding from "./pages/Onboarding.tsx";
 import Earnings from "./pages/Earnings.tsx";
 import Profile from "./pages/Profile.tsx";
+import SoundDemo from "./pages/SoundDemo.tsx";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { createOtaUpdater } from "../vendor/freshon-api/dist/ota";
+import { unlockAudio } from "@/lib/sound";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +45,23 @@ const App = () => {
         ota.checkInBackground();
     }, []);
 
+    // Android's WebView keeps an AudioContext suspended until the user has
+    // interacted with the page, so alert cues would silently do nothing. Resume
+    // it on the first real gesture of the session, then stop listening.
+    useEffect(() => {
+        const unlock = () => {
+            void unlockAudio();
+            window.removeEventListener("pointerdown", unlock);
+            window.removeEventListener("keydown", unlock);
+        };
+        window.addEventListener("pointerdown", unlock);
+        window.addEventListener("keydown", unlock);
+        return () => {
+            window.removeEventListener("pointerdown", unlock);
+            window.removeEventListener("keydown", unlock);
+        };
+    }, []);
+
     return (
         <QueryClientProvider client={queryClient}>
             <TooltipProvider>
@@ -56,6 +75,13 @@ const App = () => {
                             <Route path="/" element={<Protected><Index /></Protected>} />
                             <Route path="/earnings" element={<Protected><Earnings /></Protected>} />
                             <Route path="/profile" element={<Protected><Profile /></Protected>} />
+                            {/* Cue audition page. Vite substitutes a literal
+                                `false` for import.meta.env.DEV in production, so
+                                this branch is dead code and Rollup drops the
+                                component with it. */}
+                            {import.meta.env.DEV && (
+                                <Route path="/sound-demo" element={<SoundDemo />} />
+                            )}
                             <Route path="*" element={<NotFound />} />
                         </Routes>
                     </AuthProvider>

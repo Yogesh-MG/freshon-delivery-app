@@ -99,7 +99,18 @@ class ApiClient {
 
       return { status: response.status, data };
     } catch (error) {
-      return { status: 0, error: error instanceof Error ? error.message : "Network error" };
+      // fetch() rejects with a bare TypeError("Failed to fetch") for DNS
+      // failures, refused connections, TLS errors and CORS blocks alike — it
+      // deliberately reveals nothing. Surfacing that string put "Failed to
+      // fetch" in front of riders, who can do nothing with it. Give them
+      // something actionable and keep the real cause for the console.
+      if (import.meta.env.DEV) {
+        console.warn(`[api] ${options.method} ${this.baseUrl}${endpoint} failed:`, error);
+      }
+      return {
+        status: 0,
+        error: "Can't reach the server. Check your connection and try again.",
+      };
     }
   }
 
