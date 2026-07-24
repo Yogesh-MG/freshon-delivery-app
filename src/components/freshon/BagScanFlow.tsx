@@ -92,9 +92,14 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
                   <MapPin className="h-3 w-3 shrink-0" />
                   <span className="truncate">{stop.address || stop.label}</span>
                 </div>
-                {stop.items && stop.items.length > 0 && (
+                {(stop.order_id || stop.weight_kg != null) && (
                   <div className="mt-0.5 text-xs text-muted-foreground">
-                    {stop.items.map((it) => `${it.name} ×${it.qty}`).join(" · ")}
+                    {[
+                      stop.order_id ? `Order ${stop.order_id}` : null,
+                      stop.weight_kg != null ? `${stop.weight_kg} kg` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </div>
                 )}
               </div>

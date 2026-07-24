@@ -297,10 +297,13 @@ const Index = () => {
       customer: tripStop.customer,
       eta: tripStop.eta || "",
       notes: tripStop.notes,
-      items: tripStop.items,
       latitude: tripStop.latitude,
       longitude: tripStop.longitude,
       assignment_id: tripStop.assignment || undefined,
+      order_id: tripStop.order_id,
+      customer_phone: tripStop.customer_phone,
+      weight_kg: tripStop.weight_kg,
+      parcel_count: tripStop.parcel_count,
     });
   };
 
@@ -691,15 +694,13 @@ const VerificationGate = ({
 const PACKAGING_KG = 1; // 1 kg overhead per trip for packaging materials
 
 const getTripWeightKg = (trip: DeliveryTrip): number | null => {
-  const items = trip.stops.flatMap((s) => s.items || []);
-  if (items.length === 0) return null;
-  const hasAnyWeight = items.some((item) => item.weight_grams != null);
-  if (!hasAnyWeight) return null;
-  const gramsFromItems = items.reduce(
-    (sum, item) => sum + (item.weight_grams ?? 0) * item.qty,
-    0,
-  );
-  return gramsFromItems / 1000 + PACKAGING_KG;
+  // Backend sends per-drop total weight only (no product breakdown).
+  const weights = trip.stops
+    .map((s) => s.weight_kg)
+    .filter((w): w is number => w != null);
+  if (weights.length === 0) return null;
+  const kg = weights.reduce((sum, w) => sum + w, 0);
+  return kg + PACKAGING_KG;
 };
 
 const AvailableTripsList = ({

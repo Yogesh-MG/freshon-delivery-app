@@ -17,7 +17,14 @@ export interface TripStop {
   bag_scanned: boolean;
   /** The owning assignment (drop-offs only; null for the hub pickup). */
   assignment: string | null;
-  items?: { name: string; qty: number; unit: string; weight_grams: number | null; fragile?: boolean }[];
+  /** Human order id (tracking id) the rider can quote — drop-offs only. */
+  order_id?: string | null;
+  /** Number to reach the customer at the door. */
+  customer_phone?: string;
+  /** Total parcel weight in kg. The rider is told weight, never contents. */
+  weight_kg?: number | null;
+  /** How many bags/lines to carry — a count, never the products. */
+  parcel_count?: number;
 }
 
 export interface TripHub {

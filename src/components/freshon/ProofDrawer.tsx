@@ -1,6 +1,6 @@
 import { Stop } from "@/lib/types";
 import { openInGoogleMaps } from "@/lib/mapApps";
-import { Camera, CheckCircle2, KeyRound, Navigation, ScanLine, Wallet, X } from "lucide-react";
+import { Camera, CheckCircle2, KeyRound, Navigation, Phone, ScanLine, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type Mode = "details" | "otp" | "photo" | "done";
@@ -95,20 +95,29 @@ export const ProofDrawer = ({
           {mode === "details" && (
             <div className="space-y-4">
               <div>
-                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Items</div>
-                <div className="space-y-1.5">
-                  {stop.items?.length ? stop.items.map((it, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground">{it.qty}x {it.name}</span>
-                        {it.fragile && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">FRAGILE</span>}
-                      </div>
-                      <span className="text-muted-foreground">{it.weight}</span>
-                    </div>
-                  )) : (
-                    <div className="rounded-xl bg-muted/60 px-3 py-2 text-sm text-muted-foreground">No item details provided.</div>
-                  )}
+                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Parcel</div>
+                <div className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2 text-sm">
+                  <div className="flex flex-col">
+                    {stop.order_id && (
+                      <span className="font-semibold text-foreground">Order {stop.order_id}</span>
+                    )}
+                    <span className="text-muted-foreground">
+                      {stop.parcel_count ? `${stop.parcel_count} bag${stop.parcel_count > 1 ? "s" : ""}` : "Parcel"}
+                    </span>
+                  </div>
+                  <span className="font-semibold text-foreground">
+                    {stop.weight_kg != null ? `${stop.weight_kg} kg` : "—"}
+                  </span>
                 </div>
+                {stop.customer_phone && (
+                  <a
+                    href={`tel:${stop.customer_phone}`}
+                    className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-sm font-bold text-primary"
+                  >
+                    <Phone className="h-4 w-4" />
+                    Call {stop.customer || "customer"}
+                  </a>
+                )}
               </div>
               {stop.notes && (
                 <div className="rounded-2xl border border-dashed border-primary/40 bg-primary-soft p-3 text-sm text-secondary">
