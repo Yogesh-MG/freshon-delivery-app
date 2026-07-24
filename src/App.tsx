@@ -11,6 +11,7 @@ import Onboarding from "./pages/Onboarding.tsx";
 import Earnings from "./pages/Earnings.tsx";
 import Profile from "./pages/Profile.tsx";
 import SoundDemo from "./pages/SoundDemo.tsx";
+import { DemoBar } from "@/components/freshon/DemoBar";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
@@ -84,6 +85,9 @@ const App = () => {
                             )}
                             <Route path="*" element={<NotFound />} />
                         </Routes>
+                        {/* Demo-mode switch. Same dead-code trick as above —
+                            it never reaches a release bundle. */}
+                        {import.meta.env.DEV && <DemoBar />}
                     </AuthProvider>
                 </BrowserRouter>
             </TooltipProvider>

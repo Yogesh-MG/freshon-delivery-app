@@ -26,6 +26,9 @@ import { DeliveryPartnerService } from "@/lib/deliveryPartnerService";
 import { DeliveryTrip, DeliveryTripService, TripStop } from "@/lib/deliveryTripService";
 import { useDeliverySocket } from "@/hooks/useDeliverySocket";
 import { TripOffer } from "@/components/freshon/TripOffer";
+import { TripPreview } from "@/components/freshon/TripPreview";
+import { TripDistance, tripWeightKg, useTripDistance } from "@/lib/tripDistance";
+import { isDemoMode } from "@/lib/demo/demoMode";
 
 const emptyStats: EarningsStats = {
   earnings: 0,
@@ -142,8 +145,12 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [trip, setTrip] = useState<DeliveryTrip | null>(null);
   const [availableTrips, setAvailableTrips] = useState<DeliveryTrip[]>([]);
+  const [previewTrip, setPreviewTrip] = useState<DeliveryTrip | null>(null);
   const [riderPos, setRiderPos] = useState<{ latitude: number; longitude: number } | null>(null);
   const [tripBusy, setTripBusy] = useState(false);
+
+  // Quoted distance covers the ride to the hub as well as the drops themselves.
+  const distanceOf = useTripDistance(availableTrips, riderPos);
   // KYC/verification gate — a partner can only go online once every required
   // document is uploaded AND approved by ops.
   const [verification, setVerification] = useState<{
@@ -254,6 +261,7 @@ const Index = () => {
     }
     setTrip(result.data);
     setAvailableTrips((current) => current.filter((t) => t.id !== tripToAccept.id));
+    setPreviewTrip(null);
     toast.success("Trip accepted");
     play("success");
   };
@@ -295,9 +303,17 @@ const Index = () => {
       label: tripStop.label,
       address: tripStop.address,
       customer: tripStop.customer,
+      customer_phone: tripStop.customer_phone,
       eta: tripStop.eta || "",
       notes: tripStop.notes,
-      items: tripStop.items,
+      // Trip stops carry `weight_grams`/`unit`; a Stop wants one display string.
+      // Passing them straight through left the weight column blank.
+      items: tripStop.items?.map((item) => ({
+        name: item.name,
+        qty: item.qty,
+        weight: item.weight_grams != null ? `${item.weight_grams} g` : item.unit,
+        fragile: item.fragile,
+      })),
       latitude: tripStop.latitude,
       longitude: tripStop.longitude,
       assignment_id: tripStop.assignment || undefined,
@@ -380,7 +396,10 @@ const Index = () => {
     play("success");
   };
 
-  const completeStop = async (stop: Stop, proof: { type: "otp" | "photo"; otpCode?: string; photo?: File }) => {
+  const completeStop = async (
+    stop: Stop,
+    proof: { type: "otp" | "photo"; otpCode?: string; photo?: File; codCollected?: boolean },
+  ) => {
     // Trip drop-offs carry their own assignment id; single missions use the active one.
     const isTripStop = !!stop.assignment_id;
     const assignmentId = stop.assignment_id ?? activeMission?.id;
@@ -418,6 +437,7 @@ const Index = () => {
 
     const result = await DeliveryAssignmentService.markDelivered(
       assignmentId, stop.id, proof.type, proof.otpCode, coords?.latitude, coords?.longitude,
+      proof.codCollected,
     );
     if (!result.success) {
       toast.error(result.error || "Unable to complete stop");
@@ -585,7 +605,12 @@ const Index = () => {
                 </>
               ) : online && availableTrips.length > 0 ? (
                 // No map while idle — the trip pool is what matters here.
-                <AvailableTripsList trips={availableTrips} busy={tripBusy} onAccept={acceptTrip} />
+                <AvailableTripsList
+                  trips={availableTrips}
+                  busy={tripBusy}
+                  onPreview={setPreviewTrip}
+                  distanceOf={distanceOf}
+                />
               ) : (
                 // Offline, or online with an empty pool: just the radar, with a
                 // green contact per order waiting in the pool.
@@ -594,7 +619,12 @@ const Index = () => {
 
               {/* Load only means something while working — hidden when idle offline. */}
               {(online || trip || activeMission) && (
-                <LoadMeter value={trip ? trip.stop_count : activeMission?.weight_kg || 0} capacity={15} />
+                <LoadMeter
+                  // Was passing trip.stop_count into a meter labelled kg — a
+                  // 3-stop trip read as "3 / 15 kg".
+                  value={trip ? tripWeightKg(trip) : activeMission?.weight_kg ?? null}
+                  capacity={15}
+                />
               )}
             </div>
           </div>
@@ -604,6 +634,16 @@ const Index = () => {
       </PhoneFrame>
 
       <ProofDrawer stop={openStop} onClose={() => setOpenStop(null)} onComplete={completeStop} onResend={resendDeliveryOtp} />
+
+      {previewTrip && (
+        <TripPreview
+          trip={previewTrip}
+          distance={distanceOf(previewTrip)}
+          busy={tripBusy}
+          onAccept={acceptTrip}
+          onClose={() => setPreviewTrip(null)}
+        />
+      )}
 
       {offeredTrip && (
         <TripOffer
@@ -688,28 +728,16 @@ const VerificationGate = ({
   );
 };
 
-const PACKAGING_KG = 1; // 1 kg overhead per trip for packaging materials
-
-const getTripWeightKg = (trip: DeliveryTrip): number | null => {
-  const items = trip.stops.flatMap((s) => s.items || []);
-  if (items.length === 0) return null;
-  const hasAnyWeight = items.some((item) => item.weight_grams != null);
-  if (!hasAnyWeight) return null;
-  const gramsFromItems = items.reduce(
-    (sum, item) => sum + (item.weight_grams ?? 0) * item.qty,
-    0,
-  );
-  return gramsFromItems / 1000 + PACKAGING_KG;
-};
-
 const AvailableTripsList = ({
   trips,
   busy,
-  onAccept,
+  onPreview,
+  distanceOf,
 }: {
   trips: DeliveryTrip[];
   busy?: boolean;
-  onAccept: (t: DeliveryTrip) => void;
+  onPreview: (t: DeliveryTrip) => void;
+  distanceOf: (t: DeliveryTrip) => TripDistance;
 }) => {
   const [tab, setTab] = useState<"single" | "batch">("single");
   const single = trips.filter((t) => t.stops.filter((s) => s.type === "dropoff").length === 1);
@@ -762,13 +790,13 @@ const AvailableTripsList = ({
       ) : tab === "single" ? (
         <div className="grid grid-cols-2 gap-2.5">
           {single.map((t) => (
-            <SingleTripCard key={t.id} trip={t} busy={busy} onAccept={() => onAccept(t)} />
+            <SingleTripCard key={t.id} trip={t} distance={distanceOf(t)} busy={busy} onPreview={() => onPreview(t)} />
           ))}
         </div>
       ) : (
         <div className="space-y-2.5">
           {batch.map((t) => (
-            <BatchTripCard key={t.id} trip={t} busy={busy} onAccept={() => onAccept(t)} />
+            <BatchTripCard key={t.id} trip={t} distance={distanceOf(t)} busy={busy} onPreview={() => onPreview(t)} />
           ))}
         </div>
       )}
@@ -776,48 +804,73 @@ const AvailableTripsList = ({
   );
 };
 
-const SingleTripCard = ({ trip, busy, onAccept }: { trip: DeliveryTrip; busy?: boolean; onAccept: () => void }) => {
-  const weightKg = getTripWeightKg(trip);
-  return (
-    <div className="flex flex-col rounded-2xl glass p-3.5 shadow-card-soft animate-slide-up">
-      <div className="flex items-baseline gap-0.5 mb-2">
-        <IndianRupee className="h-4 w-4 text-primary shrink-0 self-center" />
-        <span className="text-[28px] font-black leading-none text-primary">
-          {trip.earnings != null ? Number(trip.earnings).toFixed(0) : "—"}
-        </span>
-      </div>
-      <div className="space-y-1 mb-3">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-          <Route className="h-3 w-3 text-primary shrink-0" />
-          {Number(trip.total_distance_km).toFixed(1)} km
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3 shrink-0" />
-          ~{trip.total_duration_min} min
-        </div>
-        {weightKg != null && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Package className="h-3 w-3 shrink-0" />
-            {weightKg.toFixed(2)} kg
-          </div>
-        )}
-      </div>
-      <button
-        onClick={onAccept}
-        disabled={busy}
-        className="mt-auto flex w-full items-center justify-center gap-1 rounded-xl bg-gradient-primary py-2 text-xs font-bold text-primary-foreground shadow-glow-primary disabled:opacity-60"
-      >
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <>Accept <ArrowRight className="h-3.5 w-3.5" /></>}
-      </button>
-    </div>
-  );
-};
+/** Weight is always shown — a blank row where the load should be reads as
+ *  "nothing to carry" rather than "not reported". */
+const WeightRow = ({ weightKg, className = "" }: { weightKg: number | null; className?: string }) => (
+  <div className={`flex items-center gap-1.5 text-xs text-muted-foreground ${className}`}>
+    <Package className="h-3 w-3 shrink-0" />
+    {weightKg != null ? `${weightKg.toFixed(2)} kg` : "Weight n/a"}
+  </div>
+);
 
-const BatchTripCard = ({ trip, busy, onAccept }: { trip: DeliveryTrip; busy?: boolean; onAccept: () => void }) => {
+const SingleTripCard = ({
+  trip,
+  distance,
+  busy,
+  onPreview,
+}: {
+  trip: DeliveryTrip;
+  distance: TripDistance;
+  busy?: boolean;
+  onPreview: () => void;
+}) => (
+  <button
+    onClick={onPreview}
+    disabled={busy}
+    className="flex flex-col rounded-2xl glass p-3.5 text-left shadow-card-soft animate-slide-up transition-all hover:ring-1 hover:ring-primary/40 disabled:opacity-60"
+  >
+    <div className="flex items-baseline gap-0.5 mb-2">
+      <IndianRupee className="h-4 w-4 text-primary shrink-0 self-center" />
+      <span className="text-[28px] font-black leading-none text-primary">
+        {trip.earnings != null ? Number(trip.earnings).toFixed(0) : "—"}
+      </span>
+    </div>
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+        <Route className="h-3 w-3 text-primary shrink-0" />
+        {distance.totalKm.toFixed(1)} km
+      </div>
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Clock className="h-3 w-3 shrink-0" />
+        ~{trip.total_duration_min} min
+      </div>
+      <WeightRow weightKg={tripWeightKg(trip)} />
+    </div>
+    <span className="mt-3 flex items-center justify-center gap-1 rounded-xl bg-primary-soft py-2 text-xs font-bold text-primary">
+      View details <ArrowRight className="h-3.5 w-3.5" />
+    </span>
+  </button>
+);
+
+const BatchTripCard = ({
+  trip,
+  distance,
+  busy,
+  onPreview,
+}: {
+  trip: DeliveryTrip;
+  distance: TripDistance;
+  busy?: boolean;
+  onPreview: () => void;
+}) => {
   const dropoffs = trip.stops.filter((s) => s.type === "dropoff");
-  const weightKg = getTripWeightKg(trip);
+  const weightKg = tripWeightKg(trip);
   return (
-    <div className="rounded-3xl glass p-4 shadow-card-soft animate-slide-up">
+    <button
+      onClick={onPreview}
+      disabled={busy}
+      className="w-full rounded-3xl glass p-4 text-left shadow-card-soft animate-slide-up transition-all hover:ring-1 hover:ring-primary/40 disabled:opacity-60"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <span className="inline-flex items-center gap-1 rounded-full bg-gradient-amber px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-foreground shadow-glow-amber">
@@ -838,28 +891,23 @@ const BatchTripCard = ({ trip, busy, onAccept }: { trip: DeliveryTrip; busy?: bo
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
         <div className="flex items-center gap-1 text-xs font-bold text-foreground">
           <Route className="h-3.5 w-3.5 text-primary" />
-          {Number(trip.total_distance_km).toFixed(1)} km
+          {distance.totalKm.toFixed(1)} km
         </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           ~{trip.total_duration_min} min
         </div>
-        {weightKg != null && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Package className="h-3.5 w-3.5" />
-            {weightKg.toFixed(2)} kg
-          </div>
-        )}
+        <WeightRow weightKg={weightKg} />
       </div>
-      <button
-        onClick={onAccept}
-        disabled={busy}
-        className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3 text-sm font-bold text-primary-foreground shadow-glow-primary disabled:opacity-60"
-      >
-        {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-        Accept batch <ArrowRight className="h-4 w-4" />
-      </button>
-    </div>
+      {distance.approachKm != null && (
+        <div className="mt-1 text-[11px] text-muted-foreground">
+          {distance.approachKm.toFixed(1)} km to hub + {distance.routeKm.toFixed(1)} km of drops
+        </div>
+      )}
+      <span className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-soft px-5 py-3 text-sm font-bold text-primary">
+        View details <ArrowRight className="h-4 w-4" />
+      </span>
+    </button>
   );
 };
 
@@ -880,7 +928,15 @@ const toMapStops = (stops: Stop[], leg: RouteDest, completed: Set<string>) =>
       is_completed: completed.has(s.id),
     }));
 
+/** Rider standing just outside the demo hub, so the map draws a real leg even
+ *  on a desktop browser that has no (or refuses) geolocation. */
+const DEMO_RIDER = { latitude: 12.9318, longitude: 77.6206 };
+
 const getCurrentCoords = () => new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
+  if (isDemoMode()) {
+    resolve(DEMO_RIDER);
+    return;
+  }
   if (!navigator.geolocation) {
     resolve(null);
     return;

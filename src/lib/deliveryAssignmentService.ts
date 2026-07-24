@@ -38,6 +38,14 @@ export class DeliveryAssignmentService {
     otpCode?: string,
     latitude?: number,
     longitude?: number,
+    /**
+     * Whether the rider took cash at the door. Not in the documented `deliver/`
+     * contract yet — the backend has to persist `cod_collected` for this to
+     * mean anything, and until it does the flag is transmitted and dropped.
+     * It is sent regardless so the wiring is in place and the rider's tick is
+     * no longer discarded inside the app.
+     */
+    codCollected?: boolean,
   ): Promise<ApiResult> {
     const response = await apiClient.post(`/api/delivery-partner/assignments/${id}/deliver/`, {
       stop_id: stopId,
@@ -45,6 +53,7 @@ export class DeliveryAssignmentService {
       otp_code: otpCode,
       latitude,
       longitude,
+      cod_collected: codCollected ?? false,
     });
     if (response.error) return { success: false, error: response.error };
     return { success: true };

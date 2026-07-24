@@ -1,6 +1,7 @@
 import { Html5Qrcode } from "html5-qrcode";
-import { Keyboard, ScanLine, X } from "lucide-react";
+import { Keyboard, ScanLine, Wand2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { isDemoMode } from "@/lib/demo/demoMode";
 
 /**
  * Full-screen camera QR/barcode scanner used to read the handover QR printed on
@@ -23,9 +24,12 @@ export const QrScanner = ({
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
   const [manualValue, setManualValue] = useState("");
+  // Demo mode has no bag and usually no camera — hand over a synthetic code so
+  // the flow past the scan can be walked. See lib/demo/demoMode.ts.
+  const demo = isDemoMode();
 
   useEffect(() => {
-    if (manual) return;
+    if (manual || demo) return;
     let cancelled = false;
     const scanner = new Html5Qrcode(regionId.current, { verbose: false });
     scannerRef.current = scanner;
@@ -52,7 +56,7 @@ export const QrScanner = ({
       const s = scannerRef.current;
       if (s && s.isScanning) s.stop().catch(() => undefined);
     };
-  }, [manual, onScan]);
+  }, [manual, demo, onScan]);
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-secondary/95 backdrop-blur-sm">
@@ -67,7 +71,28 @@ export const QrScanner = ({
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center px-6">
-        {!manual ? (
+        {demo && !manual ? (
+          <div className="w-full max-w-xs space-y-4 text-center">
+            <div className="relative mx-auto grid aspect-square w-full max-w-[220px] place-items-center rounded-3xl bg-white/5 ring-2 ring-accent/70">
+              <div className="pointer-events-none absolute inset-6 rounded-2xl border-2 border-dashed border-accent/80" />
+              <Wand2 className="h-12 w-12 text-accent/80" />
+            </div>
+            <div className="text-sm text-primary-foreground/80">{hint}</div>
+            <button
+              onClick={() => onScan(`DEMO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)}
+              className="w-full rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber"
+            >
+              Simulate scan
+            </button>
+            <button
+              onClick={() => setManual(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-primary-foreground"
+            >
+              <Keyboard className="h-4 w-4" /> Enter code manually
+            </button>
+            <div className="text-[11px] uppercase tracking-[0.18em] text-accent-glow">Demo mode · no camera</div>
+          </div>
+        ) : !manual ? (
           <>
             <div className="relative aspect-square w-full max-w-xs overflow-hidden rounded-3xl ring-2 ring-accent/70">
               <div id={regionId.current} className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
@@ -102,7 +127,7 @@ export const QrScanner = ({
               Confirm code
             </button>
             <button onClick={() => setManual(false)} className="w-full py-2 text-sm font-semibold text-primary-foreground/70">
-              Back to camera
+              {demo ? "Back" : "Back to camera"}
             </button>
           </div>
         )}

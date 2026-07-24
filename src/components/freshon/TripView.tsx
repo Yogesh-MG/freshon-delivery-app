@@ -22,7 +22,8 @@ export const TripView = ({
   /** Re-sample the rider's GPS. Called when the map destination is toggled so
    *  the drawn leg starts from where they are now, not where they were. */
   onRefreshPosition?: () => void;
-  onConfirmPickup: () => void;
+  /** Confirms the hub handover. Fired automatically by the last bag scan. */
+  onConfirmPickup: () => void | Promise<void>;
   onTripUpdate: (trip: DeliveryTrip) => void;
   onOpenStop: (stop: TripStop) => void;
   onReoptimize: () => void;

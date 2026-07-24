@@ -1,9 +1,112 @@
 import { Stop } from "@/lib/types";
 import { openInGoogleMaps } from "@/lib/mapApps";
-import { Camera, CheckCircle2, KeyRound, Navigation, ScanLine, Wallet, X } from "lucide-react";
+import { dialPhone } from "@/lib/contact";
+import { Camera, CheckCircle2, KeyRound, Navigation, Phone, ScanLine, Wallet, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { CameraCapture } from "./CameraCapture";
 
-type Mode = "details" | "otp" | "photo" | "done";
+/**
+ * A drop-off needs BOTH proofs, captured in order: the photo evidences what was
+ * left at the door, the OTP evidences the customer took it. Neither alone
+ * settles a dispute, so `photo` and `otp` are steps in one chain, not a choice.
+ */
+type Mode = "details" | "photo" | "otp" | "done";
+
+/**
+ * Delivery-complete mark: the ring sweeps closed, then the tick strokes in.
+ * Both paths declare pathLength="1" so `.draw-stroke` draws them regardless of
+ * their real geometry.
+ */
+const SuccessCheck = () => (
+  <div className="relative grid h-24 w-24 place-items-center">
+    <div className="absolute inset-0 rounded-full bg-primary-soft animate-pop-in" />
+    <svg viewBox="0 0 64 64" fill="none" className="relative h-20 w-20">
+      <circle
+        cx="32"
+        cy="32"
+        r="26"
+        pathLength="1"
+        stroke="hsl(var(--primary))"
+        strokeWidth="4"
+        strokeLinecap="round"
+        className="draw-stroke"
+        // Start the sweep at 12 o'clock rather than 3.
+        style={{ transform: "rotate(-90deg)", transformOrigin: "32px 32px" }}
+      />
+      <path
+        d="M20 33.5 L28.5 42 L45 24"
+        pathLength="1"
+        stroke="hsl(var(--primary))"
+        strokeWidth="5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="draw-stroke"
+        style={{ animationDelay: "0.32s" }}
+      />
+    </svg>
+  </div>
+);
+
+/** Where the rider is in the two-step proof chain. */
+const StepHeader = ({ step }: { step: 1 | 2 }) => (
+  <div className="flex items-center gap-2">
+    {([1, 2] as const).map((n) => (
+      <div key={n} className="flex flex-1 items-center gap-1.5">
+        <span
+          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-black ${
+            n <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {n}
+        </span>
+        <span
+          className={`text-[10px] font-bold uppercase tracking-[0.14em] ${
+            n === step ? "text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          {n === 1 ? "Photo" : "OTP"}
+        </span>
+        <span className={`h-0.5 flex-1 rounded-full ${n < step ? "bg-primary" : "bg-border"}`} />
+      </div>
+    ))}
+  </div>
+);
+
+/**
+ * Contact row for a drop-off. Riders who can't find the door need to call, and
+ * the alternative is abandoning the stop. The number is resolved from the trip
+ * payload if it carries one under any known key; the row falls back to a muted
+ * unavailable state when it does not.
+ */
+const CustomerContact = ({ stop }: { stop: Stop }) => {
+  const phone = stop.customer_phone?.trim();
+  const name = stop.customer || "Customer";
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-4 py-3">
+      <div className="min-w-0">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+          Can't find the address?
+        </div>
+        <div className="truncate text-sm font-bold text-foreground">{name}</div>
+        <div className="truncate text-xs text-muted-foreground">{phone || "Number not shared yet"}</div>
+      </div>
+      {phone ? (
+        <button
+          type="button"
+          onClick={() => dialPhone(phone)}
+          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-primary px-3.5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow-primary"
+        >
+          <Phone className="h-3.5 w-3.5" /> Call
+        </button>
+      ) : (
+        <span className="flex shrink-0 items-center gap-1.5 rounded-xl bg-muted px-3.5 py-2.5 text-xs font-bold text-muted-foreground">
+          <Phone className="h-3.5 w-3.5" /> Call
+        </span>
+      )}
+    </div>
+  );
+};
 
 export const ProofDrawer = ({
   stop,
@@ -13,7 +116,10 @@ export const ProofDrawer = ({
 }: {
   stop: Stop | null;
   onClose: () => void;
-  onComplete: (stop: Stop, proof: { type: "otp" | "photo"; otpCode?: string; photo?: File }) => Promise<boolean>;
+  onComplete: (
+    stop: Stop,
+    proof: { type: "otp" | "photo"; otpCode?: string; photo?: File; codCollected?: boolean },
+  ) => Promise<boolean>;
   onResend?: (stop: Stop) => Promise<void>;
 }) => {
   const [mode, setMode] = useState<Mode>("details");
@@ -21,16 +127,24 @@ export const ProofDrawer = ({
   const [cod, setCod] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
-  const [photo, setPhoto] = useState<File | null>(null);
+  // Held with its preview URL so step 2 can show what was actually captured.
+  const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [confetti, setConfetti] = useState<{ id: number; x: number; r: number; d: number; c: string }[]>([]);
   const refs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const replacePhoto = (next: { file: File; url: string } | null) => {
+    setPhoto((current) => {
+      if (current) URL.revokeObjectURL(current.url);
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (stop) {
       setMode("details");
       setOtp(["", "", "", "", "", ""]);
       setCod(false);
-      setPhoto(null);
+      replacePhoto(null);
     }
   }, [stop?.id]);
 
@@ -43,7 +157,12 @@ export const ProofDrawer = ({
 
   const otpFilled = otp.every((d) => d !== "");
 
-  const finish = async (proof: { type: "otp" | "photo"; otpCode?: string; photo?: File }) => {
+  /**
+   * Sent as `type: "otp"` because that is what the delivery endpoint accepts —
+   * the photo rides along and is uploaded to /proof/ before the call. Widen this
+   * once the backend can record both.
+   */
+  const finish = async (proof: { type: "otp" | "photo"; otpCode?: string; photo?: File; codCollected?: boolean }) => {
     if (!stop) return;
     setBusy(true);
     const ok = await onComplete(stop, proof);
@@ -94,35 +213,42 @@ export const ProofDrawer = ({
         <div className="max-h-[70vh] overflow-y-auto px-5 pb-6 pt-4 no-scrollbar">
           {mode === "details" && (
             <div className="space-y-4">
-              <div>
-                <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Items</div>
-                <div className="space-y-1.5">
-                  {stop.items?.length ? stop.items.map((it, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-foreground">{it.qty}x {it.name}</span>
-                        {it.fragile && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">FRAGILE</span>}
+              {/* Item manifest is a hub-side concern — it's what the rider checks
+                  while loading. At the door it's just noise between them and the
+                  proof steps, so drop-offs skip straight to the contact row. */}
+              {stop.type === "pickup" && (
+                <div>
+                  <div className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Items</div>
+                  <div className="space-y-1.5">
+                    {stop.items?.length ? stop.items.map((it, i) => (
+                      <div key={i} className="flex items-center justify-between rounded-xl bg-muted/60 px-3 py-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">{it.qty}x {it.name}</span>
+                          {it.fragile && <span className="rounded bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold text-accent">FRAGILE</span>}
+                        </div>
+                        <span className="text-muted-foreground">{it.weight}</span>
                       </div>
-                      <span className="text-muted-foreground">{it.weight}</span>
-                    </div>
-                  )) : (
-                    <div className="rounded-xl bg-muted/60 px-3 py-2 text-sm text-muted-foreground">No item details provided.</div>
-                  )}
-                </div>
-              </div>
-              {stop.notes && (
-                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary-soft p-3 text-sm text-secondary">
-                  <span className="font-bold text-primary">Customer note: </span>{stop.notes}
+                    )) : (
+                      <div className="rounded-xl bg-muted/60 px-3 py-2 text-sm text-muted-foreground">No item details provided.</div>
+                    )}
+                  </div>
                 </div>
               )}
+              {stop.type === "dropoff" && <CustomerContact stop={stop} />}
               {stop.type === "dropoff" ? (
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button onClick={() => setMode("otp")} className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-primary p-4 text-primary-foreground shadow-glow-primary">
-                    <KeyRound className="h-5 w-5" /><span className="text-sm font-bold">OTP</span>
+                <div className="space-y-2 pt-1">
+                  <button
+                    onClick={() => setMode("photo")}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary"
+                  >
+                    <Camera className="h-4 w-4" /> Start proof of delivery
                   </button>
-                  <button onClick={() => setMode("photo")} className="flex flex-col items-center gap-1 rounded-2xl bg-secondary p-4 text-secondary-foreground">
-                    <Camera className="h-5 w-5" /><span className="text-sm font-bold">Photo Proof</span>
-                  </button>
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+                    <Camera className="h-3.5 w-3.5" /> Photo
+                    <span className="opacity-50">→</span>
+                    <KeyRound className="h-3.5 w-3.5" /> OTP
+                    <span className="opacity-70">· both required</span>
+                  </div>
                 </div>
               ) : (
                 <button onClick={() => finish({ type: "photo" })} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50">
@@ -134,6 +260,25 @@ export const ProofDrawer = ({
 
           {mode === "otp" && (
             <div className="space-y-4 py-2">
+              <StepHeader step={2} />
+              {photo && (
+                <div className="flex items-center gap-3 rounded-2xl bg-muted/60 p-2 pr-4">
+                  <img src={photo.url} alt="Captured proof" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Photo captured
+                    </div>
+                    <div className="text-xs text-muted-foreground">Uploads when you complete this stop</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMode("photo")}
+                    className="shrink-0 text-xs font-bold text-primary hover:underline"
+                  >
+                    Retake
+                  </button>
+                </div>
+              )}
               <div className="text-center">
                 <div className="text-sm font-bold text-foreground">Enter the 6-digit code</div>
                 <div className="text-xs text-muted-foreground">Sent to the customer via SMS at pickup</div>
@@ -154,7 +299,14 @@ export const ProofDrawer = ({
                     onKeyDown={(e) => {
                       if (e.key === "Backspace" && !otp[i] && i > 0) refs.current[i - 1]?.focus();
                     }}
-                    className="h-14 w-11 rounded-2xl border border-border bg-card text-center text-2xl font-extrabold text-foreground outline-none ring-primary transition focus:ring-2"
+                    // The sheet itself is bg-card, so a bg-card box with a
+                    // hairline border vanished into it. Filled + 2px border, and
+                    // each box turns primary once it holds a digit.
+                    className={`h-14 w-11 rounded-2xl border-2 text-center text-2xl font-extrabold text-foreground outline-none transition ${
+                      d
+                        ? "border-primary bg-primary-soft"
+                        : "border-border bg-muted"
+                    } focus:border-primary focus:bg-card focus:ring-4 focus:ring-primary/25`}
                   />
                 ))}
               </div>
@@ -164,10 +316,10 @@ export const ProofDrawer = ({
               </label>
               <button
                 disabled={!otpFilled || busy}
-                onClick={() => finish({ type: "otp", otpCode: otp.join("") })}
+                onClick={() => finish({ type: "otp", otpCode: otp.join(""), photo: photo?.file, codCollected: cod })}
                 className="w-full rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition disabled:opacity-50"
               >
-                Verify & Complete
+                Verify &amp; Complete
               </button>
               {onResend && (
                 <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
@@ -180,68 +332,39 @@ export const ProofDrawer = ({
                   >
                     {resending ? "Sending…" : "Resend code"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("photo")}
-                    className="font-bold text-secondary hover:underline"
-                  >
-                    Use photo instead
-                  </button>
                 </div>
               )}
-            </div>
-          )}
-
-          {mode === "photo" && (
-            <div className="space-y-4 py-2">
-              <label className="relative block aspect-[4/3] overflow-hidden rounded-2xl bg-secondary">
-                <div className="absolute inset-0 map-grid opacity-40" />
-                <div className="absolute inset-4 rounded-xl border-2 border-dashed border-accent/80" />
-                <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-accent/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
-                  Freshness Verification
-                </div>
-                <div className="absolute inset-0 grid place-items-center">
-                  <div className="grid place-items-center gap-2 text-center">
-                    <Camera className="h-10 w-10 text-accent/80" />
-                    <span className="px-4 text-xs font-semibold text-primary-foreground/80">
-                      {photo ? photo.name : "Tap to choose photo"}
-                    </span>
-                  </div>
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                  onChange={(event) => setPhoto(event.target.files?.[0] || null)}
-                />
-              </label>
-              <button onClick={() => finish({ type: "photo", photo: photo || undefined })} disabled={busy} className="w-full rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary disabled:opacity-50">
-                Capture & Complete
+              {/* Both proofs are required, so the only way out of step 2 is
+                  back to step 1 — never straight to complete. */}
+              <button
+                type="button"
+                onClick={() => setMode("photo")}
+                className="w-full py-1 text-xs font-semibold text-muted-foreground hover:underline"
+              >
+                Back to photo
               </button>
             </div>
           )}
 
+          {/* mode === "photo" has no panel — step 1 is the full-screen
+              CameraCapture overlay rendered below the drawer. */}
+
           {mode === "done" && (
-            <div className="relative grid place-items-center py-8">
+            // Clipped: the pieces fall past the panel and would otherwise
+            // stretch the drawer's scroll area.
+            <div className="relative grid place-items-center overflow-hidden py-8">
               {confetti.map((c) => (
                 <span
                   key={c.id}
-                  className="absolute h-2 w-1 animate-sprout"
+                  className="absolute h-2.5 w-1 rounded-full animate-confetti"
                   style={{
-                    left: `${c.x}%`, top: "40%", background: c.c,
-                    transform: `rotate(${c.r}deg)`, animationDelay: `${c.d}s`,
-                  }}
+                    left: `${c.x}%`, top: "38%", background: c.c,
+                    animationDelay: `${c.d}s`,
+                    "--r": `${c.r}deg`,
+                  } as React.CSSProperties}
                 />
               ))}
-              <div className="relative grid h-24 w-24 place-items-center">
-                <div className="absolute inset-0 rounded-full bg-primary-soft animate-sprout" />
-                <svg viewBox="0 0 64 64" className="relative h-16 w-16">
-                  <path d="M32 56 V30" stroke="hsl(var(--primary))" strokeWidth="4" strokeLinecap="round" className="draw-check" />
-                  <path d="M32 30 C20 24 18 14 28 10 C30 22 38 22 36 32 Z" fill="hsl(var(--primary))" className="animate-sprout" style={{ transformOrigin: "32px 32px" }} />
-                  <path d="M22 44 l8 8 l16 -18" fill="none" stroke="hsl(var(--primary))" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className="draw-check" />
-                </svg>
-              </div>
+              <SuccessCheck />
               <div className="mt-4 text-lg font-extrabold text-foreground">Delivery complete</div>
               <div className="text-xs text-muted-foreground">Earnings will update after sync</div>
               <button onClick={onClose} className="mt-5 rounded-2xl bg-secondary px-6 py-3 text-sm font-bold text-secondary-foreground">
@@ -251,6 +374,19 @@ export const ProofDrawer = ({
           )}
         </div>
       </div>
+
+      {mode === "photo" && (
+        <CameraCapture
+          title="Proof of delivery"
+          hint={`Photograph the handover at ${stop.label}`}
+          onCapture={(file) => {
+            replacePhoto({ file, url: URL.createObjectURL(file) });
+            setMode("otp");
+          }}
+          // Backing out returns to the stop, never forward — the photo is required.
+          onCancel={() => setMode("details")}
+        />
+      )}
     </div>
   );
 };

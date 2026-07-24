@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { CheckCircle2, MapPin, Package, ScanLine } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, Loader2, MapPin, Package, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 import { DeliveryTrip, DeliveryTripService, TripStop } from "@/lib/deliveryTripService";
 import { QrScanner } from "./QrScanner";
@@ -7,18 +7,48 @@ import { QrScanner } from "./QrScanner";
 interface Props {
   trip: DeliveryTrip;
   onTripUpdate: (trip: DeliveryTrip) => void;
-  onAllScanned: () => void;
+  /** Confirms the hub pickup. Fired automatically by the last bag scan. */
+  onAllScanned: () => void | Promise<void>;
   busy?: boolean;
 }
 
 export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) => {
   const [scanningStop, setScanningStop] = useState<TripStop | null>(null);
   const [scanning, setScanning] = useState(false);
+  // Set only if the auto-confirm came back without the trip moving on, which
+  // leaves the rider needing a way to retry.
+  const [confirmFailed, setConfirmFailed] = useState(false);
 
   const dropoffs = trip.stops.filter((s) => s.type === "dropoff");
   const scannedCount = dropoffs.filter((s) => s.bag_scanned).length;
-  const allScanned = scannedCount === dropoffs.length;
+  const allScanned = dropoffs.length > 0 && scannedCount === dropoffs.length;
   const nextUnscanned = dropoffs.find((s) => !s.bag_scanned) ?? null;
+
+  /**
+   * Scanning the last bag IS the handover confirmation — there is nothing left
+   * for a separate "confirm pickup" tap to assert, and asking for one just
+   * stalls a rider whose hands are full. Fired once per mount; on success the
+   * trip flips to ACTIVE and this whole component unmounts.
+   */
+  const firedRef = useRef(false);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  const confirmPickup = () => {
+    setConfirmFailed(false);
+    void Promise.resolve(onAllScanned()).finally(() => {
+      // Still mounted afterwards means the trip never left ASSIGNED — the
+      // confirm was rejected, so surface a retry rather than a dead end.
+      if (mountedRef.current) setConfirmFailed(true);
+    });
+  };
+
+  useEffect(() => {
+    if (!allScanned || firedRef.current) return;
+    firedRef.current = true;
+    confirmPickup();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allScanned]);
 
   const handleScan = async (code: string) => {
     setScanningStop(null);
@@ -32,11 +62,9 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
     onTripUpdate(result.data);
     const newScanned = result.data.stops.filter((s) => s.type === "dropoff" && s.bag_scanned).length;
     const total = result.data.stops.filter((s) => s.type === "dropoff").length;
-    if (newScanned === total) {
-      toast.success("All bags scanned — ready for pickup!");
-    } else {
-      toast.success(`Bag scanned · ${newScanned}/${total} done`);
-    }
+    // The last scan stays quiet — confirming the pickup raises its own toast,
+    // and two in a row for one tap reads as a stutter.
+    if (newScanned < total) toast.success(`Bag scanned · ${newScanned}/${total} done`);
   };
 
   return (
@@ -56,7 +84,11 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
           />
         </div>
         <div className="mt-1 text-xs text-muted-foreground">
-          {allScanned ? "All bags verified — confirm pickup below" : "Scan each bag's QR before leaving the hub"}
+          {!allScanned
+            ? "Scan each bag's QR — the last one confirms your handover"
+            : confirmFailed
+            ? "All bags verified — handover didn't go through"
+            : "All bags verified — confirming handover…"}
         </div>
       </div>
 
@@ -117,7 +149,8 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
         })}
       </div>
 
-      {/* Scan next / confirm pickup */}
+      {/* Scanning is the only action here — the last bag confirms the handover
+          by itself, so there is no confirm button unless that call failed. */}
       {!allScanned ? (
         <button
           onClick={() => setScanningStop(nextUnscanned)}
@@ -125,17 +158,26 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary disabled:opacity-50"
         >
           <ScanLine className="h-4 w-4" />
-          {scanning ? "Processing…" : `Scan bag ${scannedCount + 1} of ${dropoffs.length}`}
+          {scanning
+            ? "Processing…"
+            : scannedCount + 1 === dropoffs.length
+            ? `Scan last bag · confirms handover`
+            : `Scan bag ${scannedCount + 1} of ${dropoffs.length}`}
         </button>
-      ) : (
+      ) : confirmFailed ? (
         <button
-          onClick={onAllScanned}
+          onClick={confirmPickup}
           disabled={busy}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-60"
         >
           <CheckCircle2 className="h-4 w-4" />
-          Confirm Hub Pickup ({dropoffs.length} orders)
+          Retry hub handover ({dropoffs.length} orders)
         </button>
+      ) : (
+        <div className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-soft px-5 py-3.5 text-sm font-bold text-primary">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Confirming handover…
+        </div>
       )}
 
       {scanningStop && (

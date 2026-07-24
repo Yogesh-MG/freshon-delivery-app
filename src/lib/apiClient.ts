@@ -1,3 +1,5 @@
+import { isDemoMode } from "./demo/demoMode";
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -53,6 +55,14 @@ class ApiClient {
   }
 
   private async request<T>(endpoint: string, options: RequestInit, retry = true): Promise<ApiResponse<T>> {
+    // Demo mode (dev-only) answers the rider endpoints from in-memory state.
+    // Anything it doesn't know returns null and falls through to the network.
+    if (isDemoMode()) {
+      const { handleDemoRequest } = await import("./demo/demoBackend");
+      const demo = await handleDemoRequest<T>(endpoint, options.method || "GET", options.body);
+      if (demo) return demo;
+    }
+
     const response = await this.fetchRaw<T>(endpoint, options);
     if (response.status === 401 && retry) {
       const nextToken = await this.refreshAccessToken();

@@ -23,6 +23,9 @@ export interface Stop {
   label: string;
   address: string;
   customer?: string;
+  /** Contact number for the drop-off, so a rider who can't find the door can
+   *  call. Optional — the backend does not send it yet. */
+  customer_phone?: string;
   eta: string;
   items?: StopItem[];
   notes?: string;

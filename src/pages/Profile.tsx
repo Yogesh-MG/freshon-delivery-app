@@ -18,6 +18,7 @@ import {
     User,
     Volume2,
     VolumeX,
+    LifeBuoy,
     Zap,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -29,6 +30,7 @@ import { DeliveryPartnerService, DeliveryPartnerProfile } from "@/lib/deliveryPa
 import { Motorbike } from "./Onboarding";
 import { backendAuthService } from "@/lib/backendAuthService";
 import { useAuth } from "@/hooks/useAuth";
+import { SUPPORT_PHONE, dialPhone } from "@/lib/contact";
 
 const VEHICLE_ICONS = {
     BIKE: Bike,
@@ -564,6 +566,28 @@ const Profile = () => {
                                         aria-label="Toggle alert sounds"
                                     />
                                 </div>
+
+                                {/* Rider support — one tap to a human when a
+                                    delivery goes wrong mid-shift. */}
+                                <button
+                                    onClick={() => dialPhone(SUPPORT_PHONE)}
+                                    className="flex w-full items-center justify-between gap-3 rounded-2xl bg-card p-4 text-left"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
+                                            <LifeBuoy className="h-5 w-5" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-bold text-foreground">Customer care</div>
+                                            <div className="truncate text-xs text-muted-foreground">
+                                                {SUPPORT_PHONE} · available 24/7
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <span className="flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-primary px-3.5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow-primary">
+                                        <Phone className="h-3.5 w-3.5" /> Call
+                                    </span>
+                                </button>
 
                                 {/* Logout */}
                                 <button
