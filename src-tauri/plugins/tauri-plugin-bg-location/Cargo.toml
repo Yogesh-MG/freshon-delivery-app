@@ -1,0 +1,18 @@
+[package]
+name = "tauri-plugin-bg-location"
+version = "0.1.0"
+description = "Foreground-service location tracking for the FreshOn delivery rider app (Android)."
+edition = "2021"
+rust-version = "1.77.2"
+# Required by tauri-plugin for crates that ship mobile (android/) assets; must
+# equal package.name.
+links = "tauri-plugin-bg-location"
+
+[dependencies]
+tauri = { version = "2" }
+serde = { version = "1", features = ["derive"] }
+thiserror = "1"
+log = "0.4"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

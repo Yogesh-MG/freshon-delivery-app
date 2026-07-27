@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { DeliveryTrip } from "@/lib/deliveryTripService";
+import { DeliveryTrip, tripKm } from "@/lib/deliveryTripService";
 import { ClaimResult, TripAvailableEvent, deliverySocket } from "@/lib/deliverySocket";
 import { play, startOfferAlert } from "@/lib/sound";
 import { NOTIFY_ID, isBackgrounded, notify } from "@/lib/notify";
@@ -36,7 +36,8 @@ function offerSummary(trip: DeliveryTrip): string {
   const parts = [
     stops ? `${stops} stop${stops === 1 ? "" : "s"}` : null,
     trip.earnings != null ? `₹${trip.earnings}` : null,
-    trip.total_distance_km ? `${trip.total_distance_km.toFixed(1)} km` : null,
+    // total_distance_km arrives as a decimal string — .toFixed() on it throws.
+    tripKm(trip) ? `${tripKm(trip).toFixed(1)} km` : null,
   ].filter(Boolean);
   return parts.length ? parts.join(" · ") : "Tap to view the offer.";
 }

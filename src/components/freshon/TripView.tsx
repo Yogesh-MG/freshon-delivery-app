@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ExternalLink, IndianRupee, Loader2, MapPin, Navigation, RefreshCw, Route, X } from "lucide-react";
-import { DeliveryTrip, TripStop } from "@/lib/deliveryTripService";
+import { DeliveryTrip, TripStop, tripKm } from "@/lib/deliveryTripService";
 import { openInGoogleMaps } from "@/lib/mapApps";
 import { BagScanFlow } from "./BagScanFlow";
 import { DeliveryMap, MapStop } from "./DeliveryMap";
@@ -145,7 +145,7 @@ export const TripView = ({
             <Route className="h-3.5 w-3.5" /> Optimized route
           </div>
           <div className="mt-0.5 text-lg font-extrabold text-foreground">
-            {dropoffs.length} stops · {Number(trip.total_distance_km).toFixed(1)} km
+            {dropoffs.length} stops · {tripKm(trip).toFixed(1)} km
           </div>
           <div className="text-xs text-muted-foreground">
             ~{trip.total_duration_min} min · {doneCount}/{dropoffs.length} delivered

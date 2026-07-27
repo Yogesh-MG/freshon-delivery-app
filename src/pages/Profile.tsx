@@ -575,7 +575,7 @@ const Profile = () => {
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
-                                            <LifeBuoy className="h-5 w-5" />
+                                            <Phone className="h-5 w-5" />
                                         </div>
                                         <div className="min-w-0">
                                             <div className="text-sm font-bold text-foreground">Customer care</div>

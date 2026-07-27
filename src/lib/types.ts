@@ -24,7 +24,7 @@ export interface Stop {
   address: string;
   customer?: string;
   /** Contact number for the drop-off, so a rider who can't find the door can
-   *  call. Optional — the backend does not send it yet. */
+   *  call. Sent by the trips endpoints as `customer_phone`; empty on hub stops. */
   customer_phone?: string;
   eta: string;
   items?: StopItem[];

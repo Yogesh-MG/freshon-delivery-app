@@ -1,7 +1,10 @@
 import { useState, useSyncExternalStore } from "react";
-import { FlaskConical, Phone, RotateCcw, X } from "lucide-react";
+import { Bell, Check, Download, FlaskConical, Phone, Play, RotateCcw, Square, X } from "lucide-react";
 import { isDemoMode, setDemoMode } from "@/lib/demo/demoMode";
 import { getStopProbe, subscribeStopProbe } from "@/lib/devProbe";
+import { dumpApiLog, getApiLogCount, subscribeApiLog } from "@/lib/devApiLog";
+import { notify, NOTIFY_ID, requestNotificationPermission } from "@/lib/notify";
+import { startBackgroundTracking, stopBackgroundTracking } from "@/lib/bgLocation";
 
 /**
  * Dev-only control for demo mode — the switch that swaps the real backend for
@@ -12,6 +15,67 @@ export const DemoBar = () => {
   const [open, setOpen] = useState(false);
   const on = isDemoMode();
   const probe = useSyncExternalStore(subscribeStopProbe, getStopProbe, () => null);
+  const apiCount = useSyncExternalStore(subscribeApiLog, getApiLogCount, () => 0);
+  const [copied, setCopied] = useState(false);
+  const [bgRunning, setBgRunning] = useState(false);
+
+  /**
+   * Fire a one-shot OS notification. Tapping this, then locking the phone,
+   * confirms notifications land on the lock screen / shade with the screen off.
+   */
+  const sendTestNotification = async () => {
+    await requestNotificationPermission();
+    await notify({
+      title: "FreshOn test",
+      body: "If you can see this on the lock screen, notifications work.",
+      id: NOTIFY_ID.test,
+    });
+  };
+
+  /**
+   * Start the native "Delivery in progress" foreground service — the same one a
+   * real trip uses. Its persistent notification and location loop survive the
+   * screen turning off/on and the app backgrounding, which is what we're testing.
+   * The service PATCHes the backend with the current token; in demo mode that
+   * call just fails, which is fine — we only care that the service stays alive.
+   */
+  const startBgTest = async () => {
+    await requestNotificationPermission();
+    const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) || "https://api.freshon.in";
+    const token = localStorage.getItem("freshon_delivery_access") || "demo-token";
+    await startBackgroundTracking({
+      baseUrl,
+      token,
+      intervalMs: 30_000,
+      notificationTitle: "Delivery in progress",
+      notificationBody: "FreshOn is sharing your location for this trip",
+    });
+    setBgRunning(true);
+  };
+
+  const stopBgTest = async () => {
+    await stopBackgroundTracking();
+    setBgRunning(false);
+  };
+
+  /**
+   * Hand off the captured traffic. Clipboard first; the console dump is the
+   * fallback that always works, including in an Android webview where clipboard
+   * permission is unreliable.
+   */
+  const exportLog = async () => {
+    const json = dumpApiLog();
+    console.info("─── FreshOn API capture ───\n" + json);
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked — the console dump above is the payload.
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (!open) {
     return (
@@ -63,6 +127,56 @@ export const DemoBar = () => {
           <RotateCcw className="h-3.5 w-3.5" /> Reset trips
         </button>
       )}
+
+      {/* Real request/response captured per endpoint — the only way to see the
+          shapes, since everything is auth-gated and there's no public schema. */}
+      <div className="mt-3 border-t border-white/10 pt-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">
+            API capture
+          </div>
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-black text-white/70">
+            {apiCount}
+          </span>
+        </div>
+        <button
+          onClick={exportLog}
+          disabled={apiCount === 0}
+          className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white/80 disabled:opacity-40"
+        >
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Download className="h-3.5 w-3.5" />}
+          {copied ? "Copied + logged" : `Export ${apiCount} endpoint${apiCount === 1 ? "" : "s"}`}
+        </button>
+      </div>
+
+      {/* Background test — verify notifications and the "Delivery in progress"
+          foreground service survive the screen turning off/on. Start it, lock
+          the phone, wake it: the persistent notification and location loop
+          should still be running. */}
+      <div className="mt-3 border-t border-white/10 pt-2.5">
+        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">
+          Background test
+        </div>
+        <button
+          onClick={sendTestNotification}
+          className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white/80"
+        >
+          <Bell className="h-3.5 w-3.5" /> Send test notification
+        </button>
+        <button
+          onClick={bgRunning ? stopBgTest : startBgTest}
+          className={`mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold ${
+            bgRunning ? "bg-red-500/80 text-white" : "bg-white/10 text-white/80"
+          }`}
+        >
+          {bgRunning ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          {bgRunning ? "Stop delivery-in-progress" : "Start delivery-in-progress"}
+        </button>
+        <p className="mt-1.5 text-[10px] leading-snug text-white/45">
+          Start it, then lock the phone. The persistent notification should stay
+          and location keeps reporting until you stop it.
+        </p>
+      </div>
 
       {/* What the API actually returned for a drop-off. The endpoints are
           auth-gated, so this is the only place the payload shape is visible. */}

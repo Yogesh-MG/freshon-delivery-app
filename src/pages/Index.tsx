@@ -18,7 +18,8 @@ import { ProofDrawer } from "@/components/freshon/ProofDrawer";
 import { QrScanner } from "@/components/freshon/QrScanner";
 import { RouteToggle, RouteDest } from "@/components/freshon/RouteToggle";
 import { play } from "@/lib/sound";
-import { requestNotificationPermission } from "@/lib/notify";
+import { ensureLocationPermission, requestNotificationPermission } from "@/lib/permissions";
+import { startBackgroundTracking, stopBackgroundTracking } from "@/lib/bgLocation";
 import { Assignment, EarningsStats, Stop } from "@/lib/types";
 import { DeliveryAssignmentService } from "@/lib/deliveryAssignmentService";
 import { DeliveryStatusService } from "@/lib/deliveryStatusService";
@@ -203,6 +204,30 @@ const Index = () => {
    */
   const hasActiveWork = tripInProgress || missionInProgress;
 
+  // Hand live-location duty to the native Android foreground service while a
+  // delivery is running. The JS WebSocket heartbeat (deliverySocket.ts) freezes
+  // the moment the app is backgrounded; the service keeps reporting position for
+  // the whole trip and shows the persistent notification Android requires. It's
+  // handed the freshest access token; stopping happens on completion/cancel or
+  // when this screen unmounts. No-op on web/desktop.
+  useEffect(() => {
+    if (!hasActiveWork) return;
+    const token = localStorage.getItem("freshon_delivery_access");
+    const baseUrl = import.meta.env.VITE_API_URL as string | undefined;
+    if (token && baseUrl) {
+      void startBackgroundTracking({
+        baseUrl,
+        token,
+        intervalMs: 30_000,
+        notificationTitle: "Delivery in progress",
+        notificationBody: "FreshOn is sharing your location for this trip",
+      });
+    }
+    return () => {
+      void stopBackgroundTracking();
+    };
+  }, [hasActiveWork]);
+
   const refreshDashboard = async () => {
     const [assignmentResult, earningsResult, tripResult, availableResult, kycResult] = await Promise.all([
       DeliveryAssignmentService.getAssignments(),
@@ -338,9 +363,33 @@ const Index = () => {
       return;
     }
     // Going online is the moment trip offers start arriving, and it's a real
-    // user gesture — the only context in which Android 13+ will show the
-    // POST_NOTIFICATIONS prompt. Ask here rather than on first launch.
-    if (nextOnline) void requestNotificationPermission();
+    // user gesture — the only context in which Android will show the
+    // POST_NOTIFICATIONS and location prompts. Ask for both here, and hard-block
+    // going online if either is refused: without location the rider can't be
+    // routed or tracked, and without notifications they'd silently miss offers.
+    if (nextOnline) {
+      const [notifyOk, locationOk] = await Promise.all([
+        requestNotificationPermission(),
+        ensureLocationPermission(),
+      ]);
+      if (!locationOk || !notifyOk) {
+        const missing = [
+          !locationOk && "Location",
+          !notifyOk && "Notifications",
+        ].filter(Boolean) as string[];
+        // The request calls above re-prompt on a first denial, but once Android
+        // marks a permission permanently denied it stops showing the dialog —
+        // re-requesting then returns "denied" with no prompt. Point the rider to
+        // Settings so a blocked grant is always recoverable.
+        toast.error(`${missing.join(" & ")} permission required to go online`, {
+          description:
+            "Tap Allow when prompted. If nothing appears, enable it in " +
+            "Settings ▸ Apps ▸ Freshon Delivery ▸ Permissions, then try again.",
+        });
+        play("error");
+        return;
+      }
+    }
     const previous = online;
     setOnline(nextOnline);
     const coords = await getCurrentCoords();
@@ -623,7 +672,7 @@ const Index = () => {
                   // Was passing trip.stop_count into a meter labelled kg — a
                   // 3-stop trip read as "3 / 15 kg".
                   value={trip ? tripWeightKg(trip) : activeMission?.weight_kg ?? null}
-                  capacity={15}
+                  capacity={20}
                 />
               )}
             </div>

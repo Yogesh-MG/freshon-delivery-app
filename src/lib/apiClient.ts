@@ -1,5 +1,13 @@
 import { isDemoMode } from "./demo/demoMode";
 
+const safeParse = (body: string): unknown => {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return body;
+  }
+};
+
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -102,6 +110,25 @@ class ApiClient {
       });
       const contentType = response.headers.get("content-type") || "";
       const data = contentType.includes("application/json") ? await response.json() : await response.text();
+
+      // Capture what the server really sends, so response shapes come from
+      // observation rather than from the hand-written interfaces.
+      if (import.meta.env.DEV) {
+        const { recordApiCall } = await import("./devApiLog");
+        recordApiCall({
+          method: options.method || "GET",
+          endpoint,
+          status: response.status,
+          at: new Date().toISOString(),
+          request:
+            options.body instanceof FormData
+              ? "«multipart»"
+              : typeof options.body === "string"
+              ? safeParse(options.body)
+              : undefined,
+          response: data,
+        });
+      }
 
       if (!response.ok) {
         return { status: response.status, error: data?.error || data?.detail || data?.message || "Request failed" };

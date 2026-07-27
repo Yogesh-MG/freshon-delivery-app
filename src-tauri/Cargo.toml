@@ -8,6 +8,7 @@ repository = ""
 edition = "2021"
 rust-version = "1.77.2"
 
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
@@ -26,6 +27,9 @@ tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-notification = "2.3.3"
+# Foreground-service location tracking during active deliveries (Android).
+# Lives in-tree, so it's always resolvable — unlike the OTA plugin below.
+tauri-plugin-bg-location = { path = "plugins/tauri-plugin-bg-location" }
 # TEMPORARILY DISABLED — the crate lives in the monorepo at
 # packages/tauri-plugin-freshon-ota and is absent from this subtree clone, so
 # cargo can't resolve the path and the Android build fails outright. Restore
@@ -34,3 +38,9 @@ tauri-plugin-notification = "2.3.3"
 #   src-tauri/capabilities/default.json   "freshon-ota:default"
 #   src-tauri/tauri.conf.json             window url "freshonota://localhost"
 # tauri-plugin-freshon-ota = { path = "../../packages/tauri-plugin-freshon-ota" }
+[profile.release]
+opt-level = "z"
+lto = "thin"
+codegen-units = 16
+panic = "abort"
+strip = true

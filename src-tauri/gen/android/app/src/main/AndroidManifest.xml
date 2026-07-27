@@ -6,8 +6,10 @@
     <!-- Delivery: location for navigation & live order tracking -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Keep tracking the rider while a delivery is in progress in the background -->
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- A foreground service (tauri-plugin-bg-location) keeps reporting the
+         rider's position while a delivery is active, including when the app is
+         backgrounded. Deliberately NO ACCESS_BACKGROUND_LOCATION: the service
+         scope avoids the Google Play background-location review. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 

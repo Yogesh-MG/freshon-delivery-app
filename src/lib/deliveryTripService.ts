@@ -8,8 +8,8 @@ export interface TripStop {
   label: string;
   address: string;
   customer?: string;
-  /** Contact number for the drop-off, normalized from whatever key the API
-   *  uses (see PHONE_KEYS). Undefined when the payload carries none. */
+  /** Contact number for the drop-off. Sent by the API as `customer_phone`;
+   *  empty string on the hub stop, normalized to undefined (see PHONE_KEYS). */
   customer_phone?: string;
   eta?: string;
   notes?: string;
@@ -21,6 +21,15 @@ export interface TripStop {
   bag_scanned: boolean;
   /** The owning assignment (drop-offs only; null for the hub pickup). */
   assignment: string | null;
+  /** Customer-facing order reference, e.g. "FRSH-2FC946". */
+  order_id?: string | null;
+  /** Load for this stop in kg, straight from the backend. Authoritative — the
+   *  `items` breakdown below is not sent by the live API. */
+  weight_kg?: number | null;
+  /** How many physical parcels make up this stop. */
+  parcel_count?: number;
+  /** Per-item manifest. Not present on the live trips payload; kept for the
+   *  legacy single-mission shape and the demo backend. */
   items?: { name: string; qty: number; unit: string; weight_grams: number | null; fragile?: boolean }[];
 }
 
@@ -34,7 +43,10 @@ export interface TripHub {
 export interface DeliveryTrip {
   id: string;
   status: "PENDING" | "ASSIGNED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
-  total_distance_km: number;
+  /** The API serializes this as a decimal STRING ("14.46"), not a number.
+   *  Always read it through `tripKm()` — calling .toFixed() on it directly
+   *  throws. */
+  total_distance_km: number | string;
   total_duration_min: number;
   stop_count: number;
   encoded_polyline: string;
@@ -44,6 +56,9 @@ export interface DeliveryTrip {
   hub: TripHub | null;
   stops: TripStop[];
 }
+
+/** Hub → drops distance as a number. The API sends it as a decimal string. */
+export const tripKm = (trip: DeliveryTrip): number => Number(trip.total_distance_km) || 0;
 
 /**
  * Field names a drop-off's contact number might arrive under.

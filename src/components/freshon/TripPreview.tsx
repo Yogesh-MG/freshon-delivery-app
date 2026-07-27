@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ArrowRight,
+  Boxes,
   Clock,
   IndianRupee,
   Loader2,
@@ -12,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { DeliveryTrip } from "@/lib/deliveryTripService";
-import { TripDistance, tripWeightKg } from "@/lib/tripDistance";
+import { TripDistance, stopWeightKg, tripParcelCount, tripWeightKg } from "@/lib/tripDistance";
 
 /**
  * Everything about an offered trip, before committing to it. The pool cards
@@ -36,6 +37,7 @@ export const TripPreview = ({
   const [accepting, setAccepting] = useState(false);
   const dropoffs = trip.stops.filter((s) => s.type === "dropoff").sort((a, b) => a.sequence - b.sequence);
   const weightKg = tripWeightKg(trip);
+  const parcels = tripParcelCount(trip);
   const isBatch = dropoffs.length > 1;
 
   const accept = () => {
@@ -98,12 +100,17 @@ export const TripPreview = ({
             )}
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="mt-3 grid grid-cols-3 gap-2.5">
             <Metric icon={<Clock className="h-4 w-4" />} label="Est. time" value={`~${trip.total_duration_min} min`} />
             <Metric
               icon={<Package className="h-4 w-4" />}
               label="Total load"
-              value={weightKg != null ? `${weightKg.toFixed(2)} kg` : "Not reported"}
+              value={weightKg != null ? `${weightKg.toFixed(2)} kg` : "—"}
+            />
+            <Metric
+              icon={<Boxes className="h-4 w-4" />}
+              label={parcels === 1 ? "Parcel" : "Parcels"}
+              value={parcels != null ? String(parcels) : "—"}
             />
           </div>
 
@@ -125,10 +132,7 @@ export const TripPreview = ({
           </div>
           <div className="space-y-2">
             {dropoffs.map((stop, i) => {
-              const stopKg = stop.items?.reduce(
-                (sum, item) => sum + (item.weight_grams ?? 0) * item.qty,
-                0,
-              );
+              const stopKg = stopWeightKg(stop);
               return (
                 <div key={stop.id} className="flex items-stretch gap-3 rounded-2xl bg-card p-3 ring-1 ring-border">
                   <div className="flex flex-col items-center">
@@ -144,10 +148,33 @@ export const TripPreview = ({
                       </span>
                       {stop.eta && <span className="shrink-0 text-[11px] text-muted-foreground">{stop.eta}</span>}
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{stop.address}</span>
+                    <div className="flex items-start gap-1 text-xs text-muted-foreground">
+                      <MapPin className="mt-0.5 h-3 w-3 shrink-0" />
+                      {/* Addresses come through with embedded newlines. */}
+                      <span className="line-clamp-2 whitespace-pre-line">{stop.address}</span>
                     </div>
+
+                    {/* Load line. The live payload has no item manifest, so
+                        weight + parcel count is what the rider gets. */}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px]">
+                      {stopKg != null && (
+                        <span className="flex items-center gap-1 font-bold text-foreground">
+                          <Package className="h-3 w-3 text-primary" /> {stopKg.toFixed(2)} kg
+                        </span>
+                      )}
+                      {stop.parcel_count != null && stop.parcel_count > 0 && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Boxes className="h-3 w-3" /> {stop.parcel_count}{" "}
+                          {stop.parcel_count === 1 ? "parcel" : "parcels"}
+                        </span>
+                      )}
+                      {stop.order_id && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                          {stop.order_id}
+                        </span>
+                      )}
+                    </div>
+
                     {stop.items && stop.items.length > 0 && (
                       <div className="mt-1.5 space-y-0.5">
                         {stop.items.map((item, n) => (
@@ -165,11 +192,6 @@ export const TripPreview = ({
                             </span>
                           </div>
                         ))}
-                        {stopKg ? (
-                          <div className="pt-0.5 text-[11px] font-bold text-muted-foreground">
-                            {(stopKg / 1000).toFixed(2)} kg for this stop
-                          </div>
-                        ) : null}
                       </div>
                     )}
                   </div>

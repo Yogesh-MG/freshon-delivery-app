@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { tripKm } from "./deliveryTripService";
 import type { DeliveryTrip } from "./deliveryTripService";
 import type { LatLng } from "./mapsUtils";
 
@@ -124,7 +125,7 @@ export function useTripDistance(
 
   return useMemo(() => {
     return (trip: DeliveryTrip): TripDistance => {
-      const routeKm = Number(trip.total_distance_km) || 0;
+      const routeKm = tripKm(trip);
       const hub = hubLatLng(trip);
       if (!origin || !hub) {
         return { approachKm: null, routeKm, totalKm: routeKm, estimated: false };
@@ -143,14 +144,37 @@ export function useTripDistance(
 
 const PACKAGING_KG = 1; // 1 kg overhead per trip for packaging materials
 
+/** Load for a single stop in kg, or null if the payload doesn't say. */
+export function stopWeightKg(stop: DeliveryTrip["stops"][number]): number | null {
+  // The live API sends weight_kg per stop — authoritative, use it as-is.
+  if (stop.weight_kg != null) return Number(stop.weight_kg) || 0;
+  // Legacy/demo shape: derive it from the item manifest instead.
+  const items = stop.items ?? [];
+  if (!items.some((item) => item.weight_grams != null)) return null;
+  return items.reduce((sum, item) => sum + (item.weight_grams ?? 0) * item.qty, 0) / 1000;
+}
+
 /**
- * Total load in kg, or null when no item on the trip reports a weight — the
- * available-trips payload does not always carry them.
+ * Total load in kg across the trip's drop-offs, or null when nothing reports a
+ * weight. Backend `weight_kg` is taken at face value; only the derived
+ * item-manifest path adds the packaging overhead, since that figure counts
+ * goods alone.
  */
 export function tripWeightKg(trip: DeliveryTrip): number | null {
-  const items = trip.stops.flatMap((s) => s.items || []);
-  if (items.length === 0) return null;
-  if (!items.some((item) => item.weight_grams != null)) return null;
-  const grams = items.reduce((sum, item) => sum + (item.weight_grams ?? 0) * item.qty, 0);
-  return grams / 1000 + PACKAGING_KG;
+  const dropoffs = trip.stops.filter((s) => s.type === "dropoff");
+  const fromBackend = dropoffs.some((s) => s.weight_kg != null);
+  const weights = dropoffs.map(stopWeightKg).filter((kg): kg is number => kg != null);
+  if (weights.length === 0) return null;
+  const total = weights.reduce((sum, kg) => sum + kg, 0);
+  return fromBackend ? total : total + PACKAGING_KG;
+}
+
+/** Total parcels across the trip's drop-offs, or null when not reported. */
+export function tripParcelCount(trip: DeliveryTrip): number | null {
+  const counts = trip.stops
+    .filter((s) => s.type === "dropoff")
+    .map((s) => s.parcel_count)
+    .filter((n): n is number => typeof n === "number");
+  if (counts.length === 0) return null;
+  return counts.reduce((sum, n) => sum + n, 0);
 }

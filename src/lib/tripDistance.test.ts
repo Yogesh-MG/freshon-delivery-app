@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { ROAD_DETOUR_FACTOR, haversineKm, hubLatLng, tripWeightKg } from "./tripDistance";
+import { ROAD_DETOUR_FACTOR, haversineKm, hubLatLng, tripParcelCount, tripWeightKg } from "./tripDistance";
+import { tripKm } from "./deliveryTripService";
 import type { DeliveryTrip } from "./deliveryTripService";
 
 const HUB = { lat: 12.9352, lng: 77.6245 }; // Koramangala
@@ -8,7 +9,7 @@ const INDIRANAGAR = { lat: 12.9784, lng: 77.6408 };
 const trip = (overrides: Partial<DeliveryTrip> = {}): DeliveryTrip => ({
   id: "t1",
   status: "PENDING",
-  total_distance_km: 14.2,
+  total_distance_km: "14.2",
   total_duration_min: 46,
   stop_count: 2,
   encoded_polyline: "",
@@ -70,6 +71,88 @@ describe("tripWeightKg", () => {
   });
 });
 
+/**
+ * Verbatim slice of a real GET /trips/available/ response, so the shape the
+ * backend actually sends is pinned by a test rather than assumed.
+ */
+const LIVE_TRIP = {
+  id: "c2fcc60c-4dc1-4bd7-96e3-3964849c95d3",
+  status: "PENDING",
+  total_distance_km: "14.46",
+  total_duration_min: 39,
+  stop_count: 1,
+  encoded_polyline: "",
+  is_optimized: true,
+  earnings: 126.76,
+  hub: { label: "FreshOn Main Hub", address: "", latitude: 12.965584, longitude: 77.50456 },
+  stops: [
+    {
+      id: "hub-71a9c5b2",
+      type: "pickup",
+      label: "FreshOn Main Hub",
+      address: "",
+      latitude: 12.965584,
+      longitude: 77.50456,
+      sequence: 0,
+      is_completed: false,
+      customer: "",
+      eta: "",
+      notes: "",
+      assignment: null,
+      order_id: null,
+      customer_phone: "",
+      weight_kg: null,
+      parcel_count: 0,
+    },
+    {
+      id: "322bf49c",
+      type: "dropoff",
+      label: "Current Location",
+      address: "Devarachikkanahalli",
+      customer: "Shailaja Manjunath",
+      eta: "",
+      notes: "",
+      latitude: 12.894016,
+      longitude: 77.615992,
+      sequence: 1,
+      is_completed: false,
+      assignment: "483840a5",
+      bag_scanned: false,
+      order_id: "FRSH-2FC946",
+      customer_phone: "9900242455",
+      weight_kg: 8.21,
+      parcel_count: 9,
+    },
+  ],
+} as unknown as DeliveryTrip;
+
+describe("the live trips/available payload", () => {
+  it("reads weight from weight_kg, counting drop-offs only", () => {
+    // 8.21 from the drop-off; the hub's null must not become a 0 or an NaN.
+    expect(tripWeightKg(LIVE_TRIP)).toBeCloseTo(8.21, 5);
+  });
+
+  it("does not add packaging overhead on top of a backend weight", () => {
+    // The +1 kg only applies to the derived item-manifest path.
+    expect(tripWeightKg(LIVE_TRIP)).toBeLessThan(9);
+  });
+
+  it("sums parcels across drop-offs", () => {
+    expect(tripParcelCount(LIVE_TRIP)).toBe(9);
+  });
+
+  it("coerces the decimal-string distance", () => {
+    expect(tripKm(LIVE_TRIP)).toBeCloseTo(14.46, 5);
+    // The raw field is a string — .toFixed() on it would throw.
+    expect(typeof LIVE_TRIP.total_distance_km).toBe("string");
+  });
+
+  it("still reports a weight when the item manifest is absent", () => {
+    expect(LIVE_TRIP.stops.every((s) => s.items === undefined)).toBe(true);
+    expect(tripWeightKg(LIVE_TRIP)).not.toBeNull();
+  });
+});
+
 describe("quoted distance", () => {
   it("adds the approach leg to the backend's hub→drops figure", () => {
     const t = trip();
@@ -77,8 +160,8 @@ describe("quoted distance", () => {
     const approach = haversineKm(rider, HUB) * ROAD_DETOUR_FACTOR;
 
     // What useTripDistance computes before OSRM answers.
-    const total = approach + t.total_distance_km;
-    expect(total).toBeGreaterThan(t.total_distance_km);
+    const total = approach + tripKm(t);
+    expect(total).toBeGreaterThan(tripKm(t));
     expect(approach).toBeGreaterThan(0);
   });
 });

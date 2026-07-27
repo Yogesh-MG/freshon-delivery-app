@@ -88,6 +88,7 @@ export const NOTIFY_ID = {
   offer: 1001,
   offerGone: 1002,
   connection: 1003,
+  test: 1099,
 } as const;
 
 /**

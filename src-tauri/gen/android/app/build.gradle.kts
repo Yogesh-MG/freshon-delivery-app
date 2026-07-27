@@ -1,5 +1,12 @@
 import java.util.Properties
+import java.io.FileInputStream
 
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties()
+
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -24,6 +31,14 @@ android {
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
     }
+    signingConfigs {
+        create("release") {
+            keystoreProperties["keyAlias"]?.let { keyAlias = it as String }
+            keystoreProperties["keyPassword"]?.let { keyPassword = it as String }
+            keystoreProperties["storeFile"]?.let { storeFile = file(it as String) }
+            keystoreProperties["storePassword"]?.let { storePassword = it as String }
+        }
+    }
     buildTypes {
         getByName("debug") {
             applicationIdSuffix = ".debug"
@@ -38,6 +53,7 @@ android {
             }
         }
         getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }

@@ -22,7 +22,7 @@ import {
   Route,
   X,
 } from "lucide-react";
-import { DeliveryTrip } from "@/lib/deliveryTripService";
+import { DeliveryTrip, tripKm } from "@/lib/deliveryTripService";
 import { ClaimResult } from "@/lib/deliverySocket";
 
 const OFFER_TTL_SECONDS = 25;
@@ -80,7 +80,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
             New trip available
           </div>
           <div className="text-xl font-extrabold">
-            {dropoffs.length} stop{dropoffs.length !== 1 ? "s" : ""} · {Number(trip.total_distance_km).toFixed(1)} km
+            {dropoffs.length} stop{dropoffs.length !== 1 ? "s" : ""} · {tripKm(trip).toFixed(1)} km
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -102,7 +102,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
         <StatCard
           icon={<Route className="h-4 w-4" />}
           label="Distance"
-          value={`${Number(trip.total_distance_km).toFixed(1)} km`}
+          value={`${tripKm(trip).toFixed(1)} km`}
         />
         <StatCard
           icon={<Clock className="h-4 w-4" />}
