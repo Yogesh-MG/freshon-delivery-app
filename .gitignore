@@ -47,3 +47,6 @@ src-tauri/plugins/*/android/.cxx/
 # Firebase / FCM secrets — client config and the backend service-account key.
 google-services.json
 **/firebase-credentials.json
+
+# A separate project checked out inside this repo — never commit it here.
+/Freshon-farm-app/
