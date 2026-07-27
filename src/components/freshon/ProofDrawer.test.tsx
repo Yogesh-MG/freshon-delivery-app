@@ -18,7 +18,9 @@ const base: Stop = {
   address: "12, 100 Feet Rd, Indiranagar",
   customer: "Ananya Rao",
   eta: "9:40 AM",
-  items: [{ name: "Mangoes", qty: 2, weight: "1000 g" }],
+  order_id: "FRSH-2FC946",
+  weight_kg: 2.4,
+  parcel_count: 2,
   notes: "Gate code 4421",
 };
 
@@ -26,17 +28,19 @@ const draw = (stop: Stop) =>
   render(<ProofDrawer stop={stop} onClose={vi.fn()} onComplete={vi.fn()} />);
 
 describe("ProofDrawer drop-off panel", () => {
-  it("shows neither the item manifest nor the customer note", () => {
+  it("shows the parcel summary and note, never product names", () => {
     draw(base);
-    expect(screen.queryByText("Items")).not.toBeInTheDocument();
+    // The rider is told order id + weight, never the contents.
     expect(screen.queryByText(/Mangoes/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Gate code/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Order FRSH-2FC946/)).toBeInTheDocument();
+    expect(screen.getByText(/2\.4 kg/)).toBeInTheDocument();
+    expect(screen.getByText(/Gate code 4421/)).toBeInTheDocument();
   });
 
-  it("still lists items at the hub pickup", () => {
+  it("shows the parcel weight at the hub pickup too", () => {
     draw({ ...base, type: "pickup" });
-    expect(screen.getByText("Items")).toBeInTheDocument();
-    expect(screen.getByText(/Mangoes/)).toBeInTheDocument();
+    expect(screen.getByText(/2\.4 kg/)).toBeInTheDocument();
+    expect(screen.queryByText(/Mangoes/)).not.toBeInTheDocument();
   });
 
   it("dials the customer through the system opener", () => {
