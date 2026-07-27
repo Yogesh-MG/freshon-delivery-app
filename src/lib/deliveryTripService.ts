@@ -23,13 +23,13 @@ export interface TripStop {
   assignment: string | null;
   /** Customer-facing order reference, e.g. "FRSH-2FC946". */
   order_id?: string | null;
-  /** Load for this stop in kg, straight from the backend. Authoritative — the
-   *  `items` breakdown below is not sent by the live API. */
+  /** Total parcel weight in kg, straight from the backend. The rider is told
+   *  weight, never contents. */
   weight_kg?: number | null;
-  /** How many physical parcels make up this stop. */
+  /** How many physical parcels make up this stop — a count, never the products. */
   parcel_count?: number;
-  /** Per-item manifest. Not present on the live trips payload; kept for the
-   *  legacy single-mission shape and the demo backend. */
+  /** Per-item manifest. Not sent by the live trips payload; kept only for the
+   *  demo backend's fixtures. */
   items?: { name: string; qty: number; unit: string; weight_grams: number | null; fragile?: boolean }[];
 }
 

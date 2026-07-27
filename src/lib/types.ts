@@ -10,13 +10,6 @@ export interface DeliveryAuthUser {
   is_profile_complete?: boolean;
 }
 
-export interface StopItem {
-  name: string;
-  qty: number;
-  weight: string;
-  fragile?: boolean;
-}
-
 export interface Stop {
   id: string;
   type: StopType;
@@ -27,7 +20,6 @@ export interface Stop {
    *  call. Sent by the trips endpoints as `customer_phone`; empty on hub stops. */
   customer_phone?: string;
   eta: string;
-  items?: StopItem[];
   notes?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -35,6 +27,14 @@ export interface Stop {
   is_completed?: boolean;
   /** Set on trip drop-offs so delivery can target the right assignment. */
   assignment_id?: string;
+  /** Human order id (tracking id) the rider can quote — drop-offs only. */
+  order_id?: string | null;
+  /** Number to reach the customer at the door. */
+  customer_phone?: string;
+  /** Total parcel weight in kg. The rider is told weight, never contents. */
+  weight_kg?: number | null;
+  /** How many bags/lines to carry — a count, never the products. */
+  parcel_count?: number;
 }
 
 export interface Assignment {

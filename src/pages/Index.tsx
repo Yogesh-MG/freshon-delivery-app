@@ -331,17 +331,13 @@ const Index = () => {
       customer_phone: tripStop.customer_phone,
       eta: tripStop.eta || "",
       notes: tripStop.notes,
-      // Trip stops carry `weight_grams`/`unit`; a Stop wants one display string.
-      // Passing them straight through left the weight column blank.
-      items: tripStop.items?.map((item) => ({
-        name: item.name,
-        qty: item.qty,
-        weight: item.weight_grams != null ? `${item.weight_grams} g` : item.unit,
-        fragile: item.fragile,
-      })),
       latitude: tripStop.latitude,
       longitude: tripStop.longitude,
       assignment_id: tripStop.assignment || undefined,
+      order_id: tripStop.order_id,
+      customer_phone: tripStop.customer_phone,
+      weight_kg: tripStop.weight_kg,
+      parcel_count: tripStop.parcel_count,
     });
   };
 
