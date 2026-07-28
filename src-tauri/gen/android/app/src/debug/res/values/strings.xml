@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-variant overrides of src/main/res/values/strings.xml. The debug build
+  carries the `.debug` applicationId suffix, so it sits on the device next to a
+  release install; these labels are what tell the two icons apart.
+-->
+<resources>
+    <string name="app_name">Freshon Delivery (dev)</string>
+    <string name="main_activity_title">Freshon Delivery (dev)</string>
+</resources>

@@ -13,7 +13,6 @@ import {
     Banknote,
     Package,
     Phone,
-    Star,
     Truck,
     User,
     Volume2,
@@ -26,6 +25,7 @@ import { isMuted, play, setMuted } from "@/lib/sound";
 import { PhoneFrame } from "@/components/freshon/PhoneFrame";
 import { Wordmark } from "@/components/freshon/Wordmark";
 import { BottomNav } from "@/components/freshon/BottomNav";
+import { RatingBadge } from "@/components/freshon/RatingBadge";
 import { DeliveryPartnerService, DeliveryPartnerProfile } from "@/lib/deliveryPartnerService";
 import { Motorbike } from "./Onboarding";
 import { backendAuthService } from "@/lib/backendAuthService";
@@ -201,9 +201,8 @@ const Profile = () => {
                                         <div className="flex-1">
                                             <div className="text-lg font-extrabold">{profile.name}</div>
                                             <div className="text-sm opacity-90">@{profile.username}</div>
-                                            <div className="mt-1 flex items-center gap-1 text-xs opacity-80">
-                                                <Star className="h-3 w-3 fill-current" />
-                                                {Number(profile.rating).toFixed(1)} rating
+                                            <div className="mt-1.5">
+                                                <RatingBadge rating={profile.rating} />
                                             </div>
                                         </div>
                                     </div>
