@@ -1,0 +1,30 @@
+meta {
+  name: 2 Verify OTP (login)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/auth/verify-otp/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+}
+
+body:json {
+  {
+    "phone": "{{phone}}",
+    "otp": "123456"
+  }
+}
+
+script:post-response {
+  // Stash the 90-day device key so the trip requests can use it.
+  if (res.body && res.body.device_auth_key) {
+    bru.setEnvVar("deviceKey", res.body.device_auth_key);
+  }
+}

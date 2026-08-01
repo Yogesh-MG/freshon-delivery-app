@@ -1,0 +1,17 @@
+meta {
+  name: 20 Earnings summary
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/delivery-partner/earnings/
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}

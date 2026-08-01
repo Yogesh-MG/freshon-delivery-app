@@ -1,0 +1,24 @@
+meta {
+  name: 16 Assignment in transit
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/transit/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "latitude": {{lat}},
+    "longitude": {{lng}}
+  }
+}

@@ -1,0 +1,35 @@
+meta {
+  name: 23 Update profile / payout details
+  type: http
+  seq: 23
+}
+
+patch {
+  url: {{baseUrl}}/api/delivery-partner/profile/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "name": "Test Rider",
+    "vehicle_type": "BIKE",
+    "vehicle_number": "KA01AB1234",
+    "address": "12 Main Road",
+    "city": "Bengaluru",
+    "pincode": "560001",
+    "payout_method": "UPI",
+    "bank_upi": "rider@upi"
+  }
+}
+
+docs {
+  All fields optional — send only what changes. Bank alternative to UPI:
+  bank_account_name, bank_account_number, bank_ifsc with payout_method BANK.
+}

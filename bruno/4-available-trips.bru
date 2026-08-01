@@ -1,0 +1,17 @@
+meta {
+  name: 4 Available trips
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/delivery-partner/trips/available/
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}

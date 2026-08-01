@@ -1,0 +1,26 @@
+meta {
+  name: 21 Upload delivery proof photo
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/proof/
+  body: multipartForm
+  auth: none
+}
+
+headers {
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:multipart-form {
+  mission_id: {{assignmentId}}
+  photo: @file(./fixtures/proof.jpg)
+}
+
+docs {
+  Content-Type is set by the client for multipart — do not add it by hand.
+  Point @file at any local image before sending.
+}

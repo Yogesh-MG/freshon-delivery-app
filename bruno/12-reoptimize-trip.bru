@@ -1,0 +1,17 @@
+meta {
+  name: 12 Reoptimize trip
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{tripId}}/reoptimize/
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}

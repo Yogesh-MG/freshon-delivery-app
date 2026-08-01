@@ -1,0 +1,23 @@
+meta {
+  name: 10 Scan bag QR
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{tripId}}/scan-bag/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "code": "{{bagCode}}"
+  }
+}

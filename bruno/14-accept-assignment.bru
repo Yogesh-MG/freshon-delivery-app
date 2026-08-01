@@ -1,0 +1,17 @@
+meta {
+  name: 14 Accept assignment
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/accept/
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}

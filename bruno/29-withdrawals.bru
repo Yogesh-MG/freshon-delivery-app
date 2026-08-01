@@ -1,0 +1,17 @@
+meta {
+  name: 29 Withdrawal history
+  type: http
+  seq: 29
+}
+
+get {
+  url: {{baseUrl}}/api/delivery-partner/wallet/withdrawals/
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}

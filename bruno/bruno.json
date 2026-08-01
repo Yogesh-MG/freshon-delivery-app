@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Freshon Delivery",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

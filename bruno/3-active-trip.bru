@@ -1,0 +1,17 @@
+meta {
+  name: 3 Active trip
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/delivery-partner/trips/active/
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}

@@ -1,0 +1,21 @@
+meta {
+  name: 24 Earnings history
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{baseUrl}}/api/delivery-partner/earnings/history/?days={{days}}
+  body: none
+  auth: none
+}
+
+params:query {
+  days: {{days}}
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
