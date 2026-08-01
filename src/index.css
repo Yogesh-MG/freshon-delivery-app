@@ -138,6 +138,7 @@
   /* Add the inset on top of an existing spacing value */
   .pt-safe-4 { padding-top: calc(var(--safe-top) + 1rem); }
   .pb-safe-4 { padding-bottom: calc(var(--safe-bottom) + 1rem); }
+  .pb-safe-6 { padding-bottom: calc(var(--safe-bottom) + 1.5rem); }
 
   /* Radar pulse */
   @keyframes radar {

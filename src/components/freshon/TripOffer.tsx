@@ -196,10 +196,10 @@ const StatCard = ({
   accent?: boolean;
 }) => (
   <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
-    <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-primary-foreground/60">
+    <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground/60">
       {icon} {label}
     </div>
-    <div className={`mt-1 text-base font-extrabold ${accent ? "text-accent-glow" : "text-primary-foreground"}`}>
+    <div className={`mt-1 truncate text-base font-extrabold tabular-nums ${accent ? "text-accent-glow" : "text-primary-foreground"}`}>
       {value}
     </div>
   </div>

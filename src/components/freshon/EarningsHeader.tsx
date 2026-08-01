@@ -31,12 +31,12 @@ export const EarningsHeader = ({ stats }: { stats: EarningsStats }) => {
           </div>
         </div>
         <div className="flex-1">
-          <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Today's Earnings</div>
-          <div className="flex items-baseline gap-2">
-            <div className="text-3xl font-extrabold tracking-tight text-foreground">₹{earnings.toFixed(2)}</div>
-            <div className="text-xs text-muted-foreground">/ ₹{goal}</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Today's Earnings</div>
+          <div className="mt-0.5 flex items-baseline gap-2">
+            <div className="text-3xl font-extrabold tracking-tight tabular-nums text-foreground">₹{earnings.toFixed(2)}</div>
+            <div className="text-xs tabular-nums text-muted-foreground">/ ₹{goal}</div>
           </div>
-          <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="mt-1.5 flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
             <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3 text-primary" /> {deliveries} drops</span>
             <span>{distance} km</span>
             <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-accent text-accent" /> {rating}</span>

@@ -210,7 +210,7 @@ export const ProofDrawer = ({
           </button>
         </div>
 
-        <div className="max-h-[70vh] overflow-y-auto px-5 pb-6 pt-4 no-scrollbar">
+        <div className="max-h-[70vh] overflow-y-auto px-5 pb-safe-6 pt-4 no-scrollbar">
           {mode === "details" && (
             <div className="space-y-4">
               <div>

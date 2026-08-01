@@ -547,19 +547,23 @@ const Index = () => {
     <main className="h-dvh overflow-hidden">
       <PhoneFrame>
         <div className="flex h-full flex-col">
-          <header className="px-7 pt-7">
+          <header className="px-5 pt-7">
             <Wordmark />
             {(trip || activeMission) && (
-              <div className="mt-5 flex items-baseline justify-between text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
-                <span className="text-foreground">{trip ? "Trip" : activeMission!.service}</span>
-                <span>{trip ? trip.status : activeMission!.status}</span>
+              <div className="mt-5 flex items-center justify-between gap-3">
+                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-foreground">
+                  {trip ? "Trip" : activeMission!.service}
+                </span>
+                <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                  {(trip ? trip.status : activeMission!.status).replace(/_/g, " ")}
+                </span>
               </div>
             )}
           </header>
 
           <div
             ref={scrollRef}
-            className="flex-1 overflow-y-auto overscroll-contain px-7 pb-4 pt-5"
+            className="flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-5"
           >
             {/* Pull-to-refresh affordance — grows with the drag, spins on release. */}
             <div
@@ -829,8 +833,11 @@ const AvailableTripsList = ({
       </div>
 
       {active.length === 0 ? (
-        <div className="rounded-2xl bg-muted/50 py-8 text-center text-sm text-muted-foreground">
-          No {tab} orders available right now
+        <div className="flex flex-col items-center gap-3 rounded-3xl bg-muted/50 px-6 py-10 text-center">
+          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-card text-muted-foreground ring-1 ring-border">
+            <Package className="h-5 w-5" />
+          </div>
+          <div className="text-sm text-muted-foreground">No {tab} orders available right now</div>
         </div>
       ) : tab === "single" ? (
         <div className="grid grid-cols-2 gap-2.5">
@@ -872,11 +879,11 @@ const SingleTripCard = ({
   <button
     onClick={onPreview}
     disabled={busy}
-    className="flex flex-col rounded-2xl glass p-3.5 text-left shadow-card-soft animate-slide-up transition-all hover:ring-1 hover:ring-primary/40 disabled:opacity-60"
+    className="flex flex-col rounded-3xl glass p-4 text-left shadow-card-soft animate-slide-up transition-all hover:ring-1 hover:ring-primary/40 active:scale-[0.99] disabled:opacity-60"
   >
-    <div className="flex items-baseline gap-0.5 mb-2">
+    <div className="flex items-baseline gap-0.5 mb-2.5">
       <IndianRupee className="h-4 w-4 text-primary shrink-0 self-center" />
-      <span className="text-[28px] font-black leading-none text-primary">
+      <span className="text-[28px] font-black leading-none tabular-nums text-primary">
         {trip.earnings != null ? Number(trip.earnings).toFixed(0) : "—"}
       </span>
     </div>
@@ -891,7 +898,7 @@ const SingleTripCard = ({
       </div>
       <WeightRow weightKg={tripWeightKg(trip)} />
     </div>
-    <span className="mt-3 flex items-center justify-center gap-1 rounded-xl bg-primary-soft py-2 text-xs font-bold text-primary">
+    <span className="mt-3.5 flex items-center justify-center gap-1 rounded-2xl bg-primary-soft py-2.5 text-xs font-bold text-primary">
       View details <ArrowRight className="h-3.5 w-3.5" />
     </span>
   </button>
@@ -914,7 +921,7 @@ const BatchTripCard = ({
     <button
       onClick={onPreview}
       disabled={busy}
-      className="w-full rounded-3xl glass p-4 text-left shadow-card-soft animate-slide-up transition-all hover:ring-1 hover:ring-primary/40 disabled:opacity-60"
+      className="w-full rounded-3xl glass p-4 text-left shadow-card-soft animate-slide-up transition-all hover:ring-1 hover:ring-primary/40 active:scale-[0.99] disabled:opacity-60"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -926,7 +933,7 @@ const BatchTripCard = ({
         <div className="text-right shrink-0">
           <div className="flex items-baseline gap-0.5 justify-end">
             <IndianRupee className="h-4 w-4 text-primary self-center" />
-            <span className="text-3xl font-black leading-none text-primary">
+            <span className="text-3xl font-black leading-none tabular-nums text-primary">
               {trip.earnings != null ? Number(trip.earnings).toFixed(0) : "—"}
             </span>
           </div>

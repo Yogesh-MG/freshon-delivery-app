@@ -17,8 +17,8 @@ export const BottomNav = ({ active }: { active: NavTab }) => {
     const navigate = useNavigate();
 
     return (
-        <nav className="shrink-0 px-7 pb-5 pt-1">
-            <div className="flex items-center justify-around rounded-2xl bg-card px-2 py-2 ring-1 ring-border">
+        <nav className="shrink-0 px-5 pb-5 pt-1">
+            <div className="flex items-center gap-1 rounded-2xl bg-card p-1.5 shadow-card-soft ring-1 ring-border">
                 {TABS.map(({ id, label, icon: Icon, path }) => {
                     const isActive = id === active;
                     return (
@@ -26,10 +26,10 @@ export const BottomNav = ({ active }: { active: NavTab }) => {
                             key={id}
                             onClick={() => !isActive && navigate(path)}
                             aria-current={isActive ? "page" : undefined}
-                            className={`flex flex-col items-center gap-0.5 rounded-xl px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider transition
-                ${isActive ? "text-primary" : "text-muted-foreground"}`}
+                            className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-bold uppercase tracking-wider transition-colors
+                ${isActive ? "bg-primary-soft text-primary" : "text-muted-foreground active:bg-muted"}`}
                         >
-                            <Icon className="h-4 w-4" />
+                            <Icon className={`h-5 w-5 ${isActive ? "" : "opacity-80"}`} />
                             {label}
                         </button>
                     );

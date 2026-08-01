@@ -100,7 +100,7 @@ const Earnings = () => {
         <main className="h-dvh overflow-hidden">
             <PhoneFrame>
                 <div className="flex h-full flex-col">
-                    <header className="px-7 pt-7">
+                    <header className="px-5 pt-7">
                         <Wordmark />
                     </header>
 
@@ -108,50 +108,57 @@ const Earnings = () => {
                     <div className="flex-1 overflow-y-auto space-y-4 px-5 pb-4 pt-5">
                         <div>
                             <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Earnings</h2>
-                            <p className="text-sm text-muted-foreground">Track your income and performance</p>
+                            <p className="mt-0.5 text-sm text-muted-foreground">Track your income and performance</p>
                         </div>
 
                         {/* Wallet */}
                         {wallet && (
-                            <div className="overflow-hidden rounded-3xl bg-gradient-slate p-5 text-primary-foreground shadow-elevated">
-                                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] opacity-80">
-                                    <Wallet className="h-3.5 w-3.5" /> Wallet balance
+                            <div className="relative overflow-hidden rounded-3xl bg-gradient-slate p-5 text-primary-foreground shadow-elevated">
+                                {/* Same soft highlight the profile hero uses, so the two
+                                    full-bleed cards read as one family. */}
+                                <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-accent/20 blur-2xl" />
+                                <div className="relative">
+                                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] opacity-80">
+                                        <Wallet className="h-3.5 w-3.5" /> Wallet balance
+                                    </div>
+                                    <div className="mt-1.5 text-3xl font-extrabold tracking-tight tabular-nums">
+                                        {formatCurrency(parseFloat(wallet.available))}
+                                    </div>
+                                    <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs opacity-80">
+                                        {parseFloat(wallet.pending) > 0 && (
+                                            <span className="flex items-center gap-1 tabular-nums">
+                                                <Clock className="h-3 w-3" />
+                                                {formatCurrency(parseFloat(wallet.pending))} maturing
+                                                {wallet.next_matures_at ? ` · ${maturesIn(wallet.next_matures_at)}` : ""}
+                                            </span>
+                                        )}
+                                        <span className="tabular-nums">Withdrawn {formatCurrency(parseFloat(wallet.total_withdrawn))}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowWithdraw(true)}
+                                        disabled={parseFloat(wallet.available) <= 0}
+                                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.99] disabled:opacity-50"
+                                    >
+                                        <ArrowDownToLine className="h-4 w-4" /> Withdraw
+                                    </button>
+                                    <p className="mt-2 text-center text-[11px] opacity-70">
+                                        Earnings can be withdrawn {wallet.hold_hours}h after delivery.
+                                    </p>
                                 </div>
-                                <div className="mt-1 text-3xl font-extrabold tracking-tight">
-                                    {formatCurrency(parseFloat(wallet.available))}
-                                </div>
-                                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs opacity-80">
-                                    {parseFloat(wallet.pending) > 0 && (
-                                        <span className="flex items-center gap-1">
-                                            <Clock className="h-3 w-3" />
-                                            {formatCurrency(parseFloat(wallet.pending))} maturing
-                                            {wallet.next_matures_at ? ` · ${maturesIn(wallet.next_matures_at)}` : ""}
-                                        </span>
-                                    )}
-                                    <span>Withdrawn {formatCurrency(parseFloat(wallet.total_withdrawn))}</span>
-                                </div>
-                                <button
-                                    onClick={() => setShowWithdraw(true)}
-                                    disabled={parseFloat(wallet.available) <= 0}
-                                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary disabled:opacity-50"
-                                >
-                                    <ArrowDownToLine className="h-4 w-4" /> Withdraw
-                                </button>
-                                <p className="mt-2 text-center text-[11px] opacity-70">
-                                    Earnings can be withdrawn {wallet.hold_hours}h after delivery.
-                                </p>
                             </div>
                         )}
 
-                        {/* Period Selector */}
-                        <div className="flex gap-2">
+                        {/* Period Selector — segmented control, matching the Single/Batch
+                            switch on the home screen. */}
+                        <div className="flex gap-1 rounded-2xl bg-muted p-1">
                             {PERIOD_OPTIONS.map((option) => (
                                 <button
                                     key={option.value}
                                     onClick={() => setDays(option.value)}
-                                    className={`rounded-xl px-3 py-2 text-xs font-bold transition ${days === option.value
-                                            ? "bg-gradient-primary text-primary-foreground shadow-glow-primary"
-                                            : "bg-card text-muted-foreground ring-1 ring-border"
+                                    aria-pressed={days === option.value}
+                                    className={`flex-1 rounded-xl px-2 py-2 text-xs font-bold transition-all ${days === option.value
+                                        ? "bg-card text-foreground shadow-sm"
+                                        : "text-muted-foreground"
                                         }`}
                                 >
                                     {option.label}
@@ -199,7 +206,7 @@ const Earnings = () => {
 
                                 {/* Daily Breakdown */}
                                 <div className="rounded-3xl bg-card p-4 shadow-card-soft ring-1 ring-border">
-                                    <div className="mb-3 flex items-center justify-between">
+                                    <div className="mb-3.5 flex items-center justify-between gap-3">
                                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                                             Daily Breakdown
                                         </h3>
@@ -220,7 +227,7 @@ const Earnings = () => {
 
                                 {/* Recent Deliveries */}
                                 <div className="rounded-3xl bg-card p-4 shadow-card-soft ring-1 ring-border">
-                                    <div className="mb-3 flex items-center justify-between">
+                                    <div className="mb-3.5 flex items-center justify-between gap-3">
                                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                                             Recent Deliveries
                                         </h3>
@@ -231,17 +238,17 @@ const Earnings = () => {
                                             history.recent_deliveries.map((delivery) => (
                                                 <div
                                                     key={delivery.id}
-                                                    className="flex items-center justify-between rounded-xl bg-muted/50 p-3"
+                                                    className="flex items-center justify-between gap-3 rounded-2xl bg-muted/50 p-3"
                                                 >
-                                                    <div>
-                                                        <div className="text-sm font-bold text-foreground">
+                                                    <div className="min-w-0">
+                                                        <div className="text-sm font-bold tabular-nums text-foreground">
                                                             {formatCurrency(delivery.earnings)}
                                                         </div>
-                                                        <div className="text-xs text-muted-foreground">
+                                                        <div className="truncate text-xs text-muted-foreground">
                                                             {formatDate(delivery.date)} · {delivery.service}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                                    <div className="flex shrink-0 items-center gap-1 text-xs tabular-nums text-muted-foreground">
                                                         <MapPin className="h-3 w-3" />
                                                         {delivery.distance.toFixed(1)} km
                                                     </div>
@@ -260,20 +267,20 @@ const Earnings = () => {
                         {/* Withdrawals history */}
                         {withdrawals.length > 0 && (
                             <div className="rounded-3xl bg-card p-4 shadow-card-soft ring-1 ring-border">
-                                <div className="mb-3 flex items-center justify-between">
+                                <div className="mb-3.5 flex items-center justify-between gap-3">
                                     <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Withdrawals</h3>
                                     <ArrowDownToLine className="h-4 w-4 text-muted-foreground" />
                                 </div>
                                 <div className="space-y-2">
                                     {withdrawals.map((w) => (
-                                        <div key={w.id} className="flex items-center justify-between rounded-xl bg-muted/50 p-3">
-                                            <div>
-                                                <div className="text-sm font-bold text-foreground">{formatCurrency(parseFloat(w.amount))}</div>
-                                                <div className="text-xs text-muted-foreground">
+                                        <div key={w.id} className="flex items-center justify-between gap-3 rounded-2xl bg-muted/50 p-3">
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-bold tabular-nums text-foreground">{formatCurrency(parseFloat(w.amount))}</div>
+                                                <div className="truncate text-xs text-muted-foreground">
                                                     {w.method === "UPI" ? w.upi_id : `••• ${w.bank_account_number.slice(-4)}`} · {formatDate(w.requested_at)}
                                                 </div>
                                             </div>
-                                            <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${WITHDRAWAL_BADGE[w.status]}`}>
+                                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${WITHDRAWAL_BADGE[w.status]}`}>
                                                 {w.status}
                                             </span>
                                         </div>
@@ -461,13 +468,13 @@ const SummaryCard = ({
     };
 
     return (
-        <div className="rounded-2xl bg-card p-3 shadow-card-soft ring-1 ring-border">
-            <div className={`mb-2 grid h-8 w-8 place-items-center rounded-xl ${colorClasses[color]}`}>
+        <div className="rounded-2xl bg-card p-3.5 shadow-card-soft ring-1 ring-border">
+            <div className={`mb-2.5 grid h-9 w-9 place-items-center rounded-xl ${colorClasses[color]}`}>
                 <Icon className="h-4 w-4" />
             </div>
-            <div className="text-lg font-extrabold text-foreground">{value}</div>
-            <div className="text-xs font-bold text-muted-foreground">{label}</div>
-            <div className="mt-1 text-[10px] text-muted-foreground">{trend}</div>
+            <div className="truncate text-xl font-extrabold tabular-nums text-foreground">{value}</div>
+            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+            <div className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">{trend}</div>
         </div>
     );
 };
@@ -481,12 +488,12 @@ const DayRow = ({
     formatCurrency: (n: number) => string;
     formatDate: (s: string) => string;
 }) => (
-    <div className="flex items-center justify-between rounded-xl bg-muted/50 p-3">
-        <div>
-            <div className="text-sm font-bold text-foreground">{formatDate(day.date)}</div>
-            <div className="text-xs text-muted-foreground">{day.deliveries} deliveries · {day.distance.toFixed(1)} km</div>
+    <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/50 p-3">
+        <div className="min-w-0">
+            <div className="truncate text-sm font-bold text-foreground">{formatDate(day.date)}</div>
+            <div className="truncate text-xs tabular-nums text-muted-foreground">{day.deliveries} deliveries · {day.distance.toFixed(1)} km</div>
         </div>
-        <div className="text-sm font-extrabold text-primary">{formatCurrency(day.earnings)}</div>
+        <div className="shrink-0 text-sm font-extrabold tabular-nums text-primary">{formatCurrency(day.earnings)}</div>
     </div>
 );
 

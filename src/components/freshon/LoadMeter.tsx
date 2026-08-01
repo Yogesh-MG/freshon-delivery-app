@@ -9,12 +9,12 @@ export const LoadMeter = ({ value, capacity }: { value: number | null; capacity:
     <div className="rounded-3xl glass p-4 shadow-card-soft">
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Vehicle Load</div>
-          <div className="text-lg font-extrabold text-foreground">
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Vehicle Load</div>
+          <div className="mt-0.5 text-lg font-extrabold tabular-nums text-foreground">
             {known ? `${value.toFixed(1)} / ${capacity} kg` : `— / ${capacity} kg`}
           </div>
         </div>
-        <div className="text-xs font-semibold text-primary">
+        <div className="rounded-full bg-primary-soft px-2.5 py-1 text-xs font-bold tabular-nums text-primary">
           {known ? `${Math.round(pct)}% full` : "Weight n/a"}
         </div>
       </div>

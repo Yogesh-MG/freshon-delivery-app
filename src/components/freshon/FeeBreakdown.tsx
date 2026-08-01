@@ -12,12 +12,12 @@ export const FeeBreakdown = ({ mission }: { mission: Assignment }) => {
     <div className="rounded-3xl glass p-4 shadow-card-soft">
       <div className="flex items-baseline justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Fee Engine</div>
-          <div className="text-xs text-muted-foreground">Weight + Distance + Swift</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Fee Engine</div>
+          <div className="mt-0.5 text-xs text-muted-foreground">Weight + Distance + Swift</div>
         </div>
-        <div className="text-xl font-extrabold text-foreground">₹{total.toFixed(2)}</div>
+        <div className="text-xl font-extrabold tabular-nums text-foreground">₹{total.toFixed(2)}</div>
       </div>
-      <div className="mt-3 space-y-2">
+      <div className="mt-3.5 space-y-2.5">
         {rows.map((r) => (
           <div key={r.label}>
             <div className="flex items-center justify-between text-xs">

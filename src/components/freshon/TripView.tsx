@@ -125,33 +125,31 @@ export const TripView = ({
       : dropoffs.some((s) => !s.is_completed && s.latitude != null && s.longitude != null);
 
   return (
-    <div>
-      <DeliveryMap stops={shownStops} polyline={shownPolyline} rider={rider} enableLocate className="h-56" />
+    // Rendered inside the page's own gutter, so no horizontal padding of its own.
+    <div className="space-y-4">
+      <DeliveryMap stops={shownStops} polyline={shownPolyline} rider={rider} enableLocate className="h-56 rounded-3xl" />
 
-      <div className="px-5 pt-3">
-        <RouteToggle
-          value={mapDest}
-          onChange={setMapDest}
-          hubEnabled={!!hubStop}
-          dropoffEnabled={dropoffs.length > 0}
-          dropoffLabel="Stops"
-        />
-      </div>
+      <RouteToggle
+        value={mapDest}
+        onChange={setMapDest}
+        hubEnabled={!!hubStop}
+        dropoffEnabled={dropoffs.length > 0}
+        dropoffLabel="Stops"
+      />
 
-      <div className="space-y-4 px-5 pt-4">
-      <div className="flex items-center justify-between rounded-3xl glass p-4 shadow-card-soft">
+      <div className="flex items-center justify-between gap-3 rounded-3xl glass p-4 shadow-card-soft">
         <div>
           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
             <Route className="h-3.5 w-3.5" /> Optimized route
           </div>
-          <div className="mt-0.5 text-lg font-extrabold text-foreground">
+          <div className="mt-0.5 text-lg font-extrabold tabular-nums text-foreground">
             {dropoffs.length} stops · {tripKm(trip).toFixed(1)} km
           </div>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs tabular-nums text-muted-foreground">
             ~{trip.total_duration_min} min · {doneCount}/{dropoffs.length} delivered
           </div>
           {trip.earnings != null && (
-            <div className="mt-1 flex items-center gap-1 text-sm font-bold text-primary">
+            <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-primary-soft px-2.5 py-1 text-sm font-bold tabular-nums text-primary">
               <IndianRupee className="h-3.5 w-3.5" />
               {Number(trip.earnings).toFixed(2)} earned this trip
             </div>
@@ -160,7 +158,7 @@ export const TripView = ({
         <button
           onClick={onReoptimize}
           disabled={busy}
-          className="grid h-10 w-10 place-items-center rounded-2xl bg-card ring-1 ring-border disabled:opacity-50"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-card shadow-card-soft ring-1 ring-border active:scale-95 disabled:opacity-50"
           aria-label="Re-optimize route"
         >
           <RefreshCw className={`h-4 w-4 text-foreground ${busy ? "animate-spin" : ""}`} />
@@ -170,7 +168,7 @@ export const TripView = ({
       <button
         onClick={handleNavigate}
         disabled={!canNavigate}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1a73e8] px-5 py-3.5 text-sm font-bold text-white shadow-md disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1a73e8] px-5 py-3.5 text-sm font-bold text-white shadow-md transition active:scale-[0.99] disabled:opacity-40"
         aria-label="Open in Google Maps"
       >
         <ExternalLink className="h-4 w-4" />
@@ -198,9 +196,9 @@ export const TripView = ({
           return (
             <div
               key={s.id}
-              className={`flex items-stretch gap-3 rounded-2xl bg-card p-3 shadow-card-soft ring-1 ring-border ${
+              className={`flex items-stretch gap-3 rounded-2xl bg-card p-3 shadow-card-soft ring-1 ring-border transition ${
                 done ? "opacity-60" : ""
-              } ${clickable ? "cursor-pointer hover:ring-primary/40" : ""}`}
+              } ${clickable ? "cursor-pointer hover:ring-primary/40 active:scale-[0.99]" : ""}`}
               onClick={clickable ? () => onOpenStop(s) : undefined}
             >
               <div className="flex flex-col items-center pl-1">
@@ -237,7 +235,6 @@ export const TripView = ({
             </div>
           );
         })}
-      </div>
       </div>
     </div>
   );

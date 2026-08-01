@@ -337,7 +337,7 @@ const Onboarding = () => {
         <main className="h-dvh overflow-hidden">
             <PhoneFrame>
                 <div className="flex h-full flex-col">
-                    <header className="px-7 pt-7">
+                    <header className="px-5 pt-7">
                         <Wordmark />
 
                         {/* Progress — step name + a thin bar, nothing more. */}
@@ -345,7 +345,7 @@ const Onboarding = () => {
                             <span className="text-foreground">{STEPS[step - 1]}</span>
                             <span>{step} / {STEPS.length}</span>
                         </div>
-                        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
+                        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                             <div
                                 className="h-full rounded-full bg-gradient-primary transition-all duration-300"
                                 style={{ width: `${(step / STEPS.length) * 100}%` }}
@@ -353,7 +353,7 @@ const Onboarding = () => {
                         </div>
                     </header>
 
-                    <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-7 pb-10 pt-6">
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain scroll-smooth px-5 pb-10 pt-6">
                         {step === 1 && (
                             <form
                                 className="space-y-3 animate-fade-up"
@@ -589,7 +589,7 @@ const Onboarding = () => {
                                     return (
                                         <div
                                             key={d.id}
-                                            className={`rounded-2xl p-3.5 ring-1 transition
+                                            className={`rounded-2xl p-3.5 shadow-card-soft ring-1 transition
                       ${uploaded ? "bg-primary-soft ring-primary/40" : "bg-card ring-border"}`}
                                         >
                                             <div className="flex items-start gap-3">
@@ -697,7 +697,7 @@ const Onboarding = () => {
                                     {DOC_LIST.map((d) => {
                                         const doc = getDocumentStatus(d.id);
                                         return (
-                                            <div key={d.id} className="flex items-center justify-between rounded-2xl bg-card p-3.5 ring-1 ring-border">
+                                            <div key={d.id} className="flex items-center justify-between gap-3 rounded-2xl bg-card p-3.5 shadow-card-soft ring-1 ring-border">
                                                 <span className="text-sm font-medium text-foreground">{d.label}</span>
                                                 {doc ? (
                                                     <span

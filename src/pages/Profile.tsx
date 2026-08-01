@@ -175,7 +175,7 @@ const Profile = () => {
         <main className="h-dvh overflow-hidden">
             <PhoneFrame>
                 <div className="flex h-full flex-col">
-                    <header className="px-7 pt-7">
+                    <header className="px-5 pt-7">
                         <Wordmark />
                     </header>
 
@@ -183,7 +183,7 @@ const Profile = () => {
                     <div className="flex-1 overflow-y-auto space-y-4 px-5 pb-4 pt-5">
                         <div>
                             <h2 className="text-2xl font-extrabold tracking-tight text-foreground">Profile</h2>
-                            <p className="text-sm text-muted-foreground">Manage your account details</p>
+                            <p className="mt-0.5 text-sm text-muted-foreground">Manage your account details</p>
                         </div>
 
                         {loading ? (
@@ -193,15 +193,17 @@ const Profile = () => {
                         ) : profile ? (
                             <>
                                 {/* Profile Card */}
-                                <div className="rounded-3xl bg-gradient-primary p-5 text-primary-foreground shadow-glow-primary">
-                                    <div className="flex items-center gap-4">
-                                        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-white/20 backdrop-blur">
+                                <div className="relative overflow-hidden rounded-3xl bg-gradient-primary p-5 text-primary-foreground shadow-glow-primary">
+                                    {/* Soft highlight so the flat gradient reads as a surface. */}
+                                    <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
+                                    <div className="relative flex items-center gap-4">
+                                        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white/20 ring-1 ring-white/25 backdrop-blur">
                                             <User className="h-8 w-8" />
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="text-lg font-extrabold">{profile.name}</div>
-                                            <div className="text-sm opacity-90">@{profile.username}</div>
-                                            <div className="mt-1.5">
+                                        <div className="min-w-0 flex-1">
+                                            <div className="truncate text-lg font-extrabold leading-tight">{profile.name}</div>
+                                            <div className="truncate text-sm opacity-90">@{profile.username}</div>
+                                            <div className="mt-2">
                                                 <RatingBadge rating={profile.rating} />
                                             </div>
                                         </div>
@@ -216,7 +218,7 @@ const Profile = () => {
                                         value={profile.total_deliveries.toString()}
                                     />
                                     <StatCard
-                                        icon={MapPin}
+                                        icon={Banknote}
                                         label="Total Earnings"
                                         value={formatCurrency(profile.total_earnings)}
                                     />
@@ -224,14 +226,14 @@ const Profile = () => {
 
                                 {/* Vehicle Info */}
                                 <div className="rounded-3xl bg-card p-4 shadow-card-soft ring-1 ring-border">
-                                    <div className="mb-3 flex items-center justify-between">
+                                    <div className="mb-3.5 flex items-center justify-between gap-3">
                                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                                             Vehicle &amp; Address
                                         </h3>
                                         {!editing && (
                                             <button
                                                 onClick={() => setEditing(true)}
-                                                className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-xs font-bold text-foreground"
+                                                className="flex items-center gap-1.5 rounded-xl bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition active:scale-95"
                                             >
                                                 <Edit2 className="h-3 w-3" /> Edit
                                             </button>
@@ -253,10 +255,10 @@ const Profile = () => {
                                                                 key={type}
                                                                 type="button"
                                                                 onClick={() => setEditForm({ ...editForm, vehicle_type: type })}
-                                                                className={`flex flex-col items-center gap-1 rounded-2xl p-2.5 text-[10px] font-bold transition
+                                                                className={`flex min-h-[62px] flex-col items-center justify-center gap-1.5 rounded-2xl p-2.5 text-[11px] font-bold transition active:scale-95
                                   ${active ? "bg-gradient-primary text-primary-foreground shadow-glow-primary" : "bg-muted text-muted-foreground"}`}
                                                             >
-                                                                <Icon className="h-4 w-4" /> {VEHICLE_NAMES[type]}
+                                                                <Icon className="h-5 w-5" /> {VEHICLE_NAMES[type]}
                                                             </button>
                                                         );
                                                     })}
@@ -272,7 +274,7 @@ const Profile = () => {
                                                     onChange={(e) => setEditForm({ ...editForm, vehicle_number: e.target.value.toUpperCase() })}
                                                     placeholder="MH 12 AB 1234"
                                                     maxLength={20}
-                                                    className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                    className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                 />
                                             </div>
                                             <div>
@@ -284,7 +286,7 @@ const Profile = () => {
                                                     onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
                                                     placeholder="Your residential address"
                                                     maxLength={200}
-                                                    className="min-h-[64px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                    className="min-h-[64px] w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                 />
                                             </div>
                                             <div className="grid grid-cols-2 gap-2">
@@ -298,7 +300,7 @@ const Profile = () => {
                                                         onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
                                                         placeholder="City"
                                                         maxLength={60}
-                                                        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                        className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                     />
                                                 </div>
                                                 <div>
@@ -312,89 +314,63 @@ const Profile = () => {
                                                         onChange={(e) => setEditForm({ ...editForm, pincode: e.target.value.replace(/\D/g, "").slice(0, 8) })}
                                                         placeholder="Pincode"
                                                         maxLength={8}
-                                                        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                        className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                     />
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => setEditing(false)}
-                                                    className="flex-1 rounded-xl bg-muted py-2.5 text-sm font-bold text-foreground"
+                                                    className="flex-1 rounded-2xl bg-muted py-3 text-sm font-bold text-foreground transition active:scale-[0.98]"
                                                 >
                                                     Cancel
                                                 </button>
                                                 <button
                                                     onClick={handleSave}
                                                     disabled={saving}
-                                                    className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-bold text-primary-foreground shadow-glow-primary disabled:opacity-50"
+                                                    className="flex-1 rounded-2xl bg-gradient-primary py-3 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.98] disabled:opacity-50"
                                                 >
                                                     {saving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Save"}
                                                 </button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                                                    {(() => {
-                                                        const Icon = VEHICLE_ICONS[toVehicleOption(profile.vehicle_type)];
-                                                        return <Icon className="h-5 w-5" />;
-                                                    })()}
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-foreground">
-                                                        {VEHICLE_NAMES[toVehicleOption(profile.vehicle_type)]}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">Vehicle Type</div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                                                    <Car className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-foreground">
-                                                        {profile.vehicle_number || "Not set"}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">Vehicle Number</div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                                                    <Phone className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-foreground">
-                                                        {profile.phone || "Not set"}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">Phone</div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-start gap-3">
-                                                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
-                                                    <MapPin className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-foreground">
-                                                        {[profile.address, profile.city, profile.pincode].filter(Boolean).join(", ") || "Not set"}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">Address</div>
-                                                </div>
-                                            </div>
+                                        // Hairline dividers instead of loose spacing — four label/value
+                                        // pairs read as one list rather than four floating rows.
+                                        <div className="divide-y divide-border">
+                                            <DetailRow
+                                                icon={VEHICLE_ICONS[toVehicleOption(profile.vehicle_type)]}
+                                                label="Vehicle Type"
+                                                value={VEHICLE_NAMES[toVehicleOption(profile.vehicle_type)]}
+                                            />
+                                            <DetailRow
+                                                icon={Car}
+                                                label="Vehicle Number"
+                                                value={profile.vehicle_number || "Not set"}
+                                            />
+                                            <DetailRow icon={Phone} label="Phone" value={profile.phone || "Not set"} />
+                                            <DetailRow
+                                                icon={MapPin}
+                                                label="Address"
+                                                value={
+                                                    [profile.address, profile.city, profile.pincode].filter(Boolean).join(", ") ||
+                                                    "Not set"
+                                                }
+                                            />
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Payout details */}
                                 <div className="rounded-3xl bg-card p-4 shadow-card-soft ring-1 ring-border">
-                                    <div className="mb-3 flex items-center justify-between">
+                                    <div className="mb-3.5 flex items-center justify-between gap-3">
                                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
                                             Payout details
                                         </h3>
                                         {!editingPayout && (
                                             <button
                                                 onClick={() => setEditingPayout(true)}
-                                                className="flex items-center gap-1 rounded-lg bg-muted px-2 py-1 text-xs font-bold text-foreground"
+                                                className="flex items-center gap-1.5 rounded-xl bg-muted px-3 py-1.5 text-xs font-bold text-foreground transition active:scale-95"
                                             >
                                                 <Edit2 className="h-3 w-3" /> Edit
                                             </button>
@@ -435,7 +411,7 @@ const Profile = () => {
                                                         autoCapitalize="none"
                                                         autoCorrect="off"
                                                         spellCheck={false}
-                                                        className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                        className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                     />
                                                 </div>
                                             )}
@@ -453,7 +429,7 @@ const Profile = () => {
                                                             placeholder="As per bank records"
                                                             maxLength={120}
                                                             autoCapitalize="words"
-                                                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                            className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                         />
                                                     </div>
                                                     <div>
@@ -469,7 +445,7 @@ const Profile = () => {
                                                             }
                                                             placeholder="Account number"
                                                             maxLength={18}
-                                                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                            className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                         />
                                                     </div>
                                                     <div>
@@ -487,7 +463,7 @@ const Profile = () => {
                                                             autoCapitalize="characters"
                                                             autoCorrect="off"
                                                             spellCheck={false}
-                                                            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium uppercase text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                            className="w-full rounded-2xl border border-border bg-background px-3.5 py-3 text-base font-medium uppercase text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                         />
                                                     </div>
                                                 </>
@@ -496,47 +472,30 @@ const Profile = () => {
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => setEditingPayout(false)}
-                                                    className="flex-1 rounded-xl bg-muted py-2.5 text-sm font-bold text-foreground"
+                                                    className="flex-1 rounded-2xl bg-muted py-3 text-sm font-bold text-foreground transition active:scale-[0.98]"
                                                 >
                                                     Cancel
                                                 </button>
                                                 <button
                                                     onClick={handleSavePayout}
                                                     disabled={savingPayout}
-                                                    className="flex-1 rounded-xl bg-gradient-primary py-2.5 text-sm font-bold text-primary-foreground shadow-glow-primary disabled:opacity-50"
+                                                    className="flex-1 rounded-2xl bg-gradient-primary py-3 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.98] disabled:opacity-50"
                                                 >
                                                     {savingPayout ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Save"}
                                                 </button>
                                             </div>
                                         </div>
                                     ) : profile.payout_method === "UPI" && profile.bank_upi ? (
-                                        <div className="flex items-center gap-3">
-                                            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                                                <IndianRupee className="h-5 w-5" />
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-bold text-foreground">{profile.bank_upi}</div>
-                                                <div className="text-xs text-muted-foreground">UPI ID</div>
-                                            </div>
-                                        </div>
+                                        <DetailRow icon={IndianRupee} label="UPI ID" value={profile.bank_upi} flush />
                                     ) : profile.payout_method === "BANK" && profile.bank_account_number ? (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-soft text-primary">
-                                                    <Landmark className="h-5 w-5" />
-                                                </div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-foreground">
-                                                        ••••&nbsp;{profile.bank_account_number.slice(-4)}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {profile.bank_account_name || "Account"} · {profile.bank_ifsc}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                        <DetailRow
+                                            icon={Landmark}
+                                            label={`${profile.bank_account_name || "Account"} · ${profile.bank_ifsc}`}
+                                            value={`•••• ${profile.bank_account_number.slice(-4)}`}
+                                            flush
+                                        />
                                     ) : (
-                                        <div className="text-sm text-muted-foreground">
+                                        <div className="rounded-2xl bg-muted/50 p-3.5 text-sm text-muted-foreground">
                                             No payout method set. Tap <span className="font-bold text-foreground">Edit</span> to add your UPI or bank account.
                                         </div>
                                     )}
@@ -570,7 +529,7 @@ const Profile = () => {
                                     delivery goes wrong mid-shift. */}
                                 <button
                                     onClick={() => dialPhone(SUPPORT_PHONE)}
-                                    className="flex w-full items-center justify-between gap-3 rounded-2xl bg-card p-4 text-left"
+                                    className="flex w-full items-center justify-between gap-3 rounded-3xl bg-card p-4 text-left shadow-card-soft ring-1 ring-border transition active:scale-[0.99]"
                                 >
                                     <div className="flex items-center gap-3">
                                         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent/15 text-accent">
@@ -591,7 +550,7 @@ const Profile = () => {
                                 {/* Logout */}
                                 <button
                                     onClick={handleLogout}
-                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-destructive/10 py-3.5 text-sm font-bold text-destructive"
+                                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-destructive/10 py-3.5 text-sm font-bold text-destructive ring-1 ring-destructive/20 transition active:scale-[0.99]"
                                 >
                                     <LogOut className="h-4 w-4" /> Sign Out
                                 </button>
@@ -606,6 +565,32 @@ const Profile = () => {
     );
 };
 
+/**
+ * One label/value pair inside a section card. `flush` drops the vertical
+ * padding for a card that holds a single row, so it doesn't sit off-centre.
+ */
+const DetailRow = ({
+    icon: Icon,
+    label,
+    value,
+    flush,
+}: {
+    icon: any;
+    label: string;
+    value: string;
+    flush?: boolean;
+}) => (
+    <div className={`flex items-center gap-3 ${flush ? "" : "py-3 first:pt-0 last:pb-0"}`}>
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary-soft text-primary">
+            <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+            <div className="text-sm font-bold text-foreground">{value}</div>
+            <div className="truncate text-xs text-muted-foreground">{label}</div>
+        </div>
+    </div>
+);
+
 const StatCard = ({
     icon: Icon,
     label,
@@ -615,12 +600,12 @@ const StatCard = ({
     label: string;
     value: string;
 }) => (
-    <div className="rounded-2xl bg-card p-3 shadow-card-soft ring-1 ring-border">
-        <div className="mb-2 grid h-8 w-8 place-items-center rounded-xl bg-primary-soft text-primary">
+    <div className="rounded-2xl bg-card p-3.5 shadow-card-soft ring-1 ring-border">
+        <div className="mb-2.5 grid h-9 w-9 place-items-center rounded-xl bg-primary-soft text-primary">
             <Icon className="h-4 w-4" />
         </div>
-        <div className="text-lg font-extrabold text-foreground">{value}</div>
-        <div className="text-xs font-bold text-muted-foreground">{label}</div>
+        <div className="truncate text-xl font-extrabold tabular-nums text-foreground">{value}</div>
+        <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
 );
 
