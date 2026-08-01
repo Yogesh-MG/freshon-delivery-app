@@ -50,3 +50,6 @@ google-services.json
 
 # A separate project checked out inside this repo — never commit it here.
 /Freshon-farm-app/
+
+# Local Bruno API collection — dev scratch, not part of the app.
+/bruno/
