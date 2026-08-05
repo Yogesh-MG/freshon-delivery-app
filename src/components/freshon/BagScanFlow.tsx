@@ -82,7 +82,7 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
         if (!match.ok) {
             toast.error(
                 match.reason === "malformed"
-                    ? `Not a bag code — expected ${BAG_CODE_PREFIX}FRSH-XXXXXX`
+                    ? `Not a bag code — expected ${BAG_CODE_PREFIX}FRSH-XXXXXX-1`
                     : match.reason === "duplicate"
                         ? `Order ${match.orderId} is already scanned`
                         : `Order ${match.orderId} isn't on this trip`,
@@ -215,7 +215,10 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
             {scanningStop && (
                 <QrScanner
                     title={`Scan bag for stop ${dropoffs.indexOf(scanningStop) + 1}`}
-                    hint={`${bagCodeForOrder(scanningStop.order_id)} · ${scanningStop.customer || scanningStop.label}`}
+                    // Names the stop, never its code — printing the expected
+                    // code on screen would let a rider confirm a bag they never
+                    // physically had.
+                    hint={`${scanningStop.customer || scanningStop.label} · ${scanningStop.address}`}
                     demoCode={bagCodeForOrder(scanningStop.order_id)}
                     onScan={handleScan}
                     onCancel={() => setScanningStop(null)}

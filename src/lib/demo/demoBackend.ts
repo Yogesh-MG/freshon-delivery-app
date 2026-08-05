@@ -329,24 +329,40 @@ export async function handleDemoRequest<T>(
 
             case "pickup": {
                 // The handover arrives as one batch of bag codes. Re-derive the
-                // order id behind each "D-" and demand full, exact coverage of
-                // the trip's drop-offs — anything short of that is refused, the
-                // same check the real backend owns.
+                // order id from each code and demand full, exact coverage of the
+                // trip's drop-offs. The wording of these refusals mirrors the
+                // live API, which is the only reason they are worth matching —
+                // a demo that accepts what production rejects teaches the wrong
+                // thing about the code format.
                 const raw = parseBody(body).bags;
-                const codes = (Array.isArray(raw) ? raw : [])
-                    .map((b) => orderIdFromBagCode(String((b as { code?: unknown })?.code ?? "")))
-                    .filter((id): id is string => !!id);
+                const entries = (Array.isArray(raw) ? raw : []).map((b) => {
+                    const code = String((b as { code?: unknown })?.code ?? "");
+                    const stopId = String((b as { stop_id?: unknown })?.stop_id ?? "");
+                    return { code, stopId, orderId: orderIdFromBagCode(code) };
+                });
 
+                const unreadable = entries.find((e) => !e.orderId);
+                if (unreadable) {
+                    return fail<T>(
+                        `Unrecognised code for stop ${unreadable.stopId}. Scan the delivery bag QR (starts with D-).`,
+                    );
+                }
+
+                const codes = entries.map((e) => e.orderId as string);
                 const onTrip = new Set(dropoffsOf(trip).map((s) => normalizeOrderId(s.order_id)));
-                const foreign = codes.filter((id) => !onTrip.has(id));
-                if (foreign.length > 0) return fail<T>(`Bag ${foreign[0]} isn't on this trip`);
+                const foreign = entries.find((e) => !onTrip.has(e.orderId as string));
+                if (foreign) {
+                    return fail<T>(`Bag ${foreign.orderId} does not match stop ${foreign.stopId}.`);
+                }
 
                 const scanned = new Set(codes);
                 const unscanned = dropoffsOf(trip).filter(
                     (s) => !s.bag_scanned && !scanned.has(normalizeOrderId(s.order_id)),
                 );
                 if (unscanned.length > 0) {
-                    return fail<T>(`${unscanned.length} bag(s) still unscanned`);
+                    return fail<T>(
+                        `${unscanned.length} bag(s) not scanned yet. Scan all bags before confirming pickup.`,
+                    );
                 }
 
                 dropoffsOf(trip).forEach((s) => {

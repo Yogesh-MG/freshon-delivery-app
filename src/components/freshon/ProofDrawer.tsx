@@ -228,15 +228,6 @@ export const ProofDrawer = ({
                     {stop.weight_kg != null ? `${stop.weight_kg} kg` : "—"}
                   </span>
                 </div>
-                {stop.customer_phone && (
-                  <a
-                    href={`tel:${stop.customer_phone}`}
-                    className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-primary/10 px-3 py-2 text-sm font-bold text-primary"
-                  >
-                    <Phone className="h-4 w-4" />
-                    Call {stop.customer || "customer"}
-                  </a>
-                )}
               </div>
               {stop.notes && (
                 <div className="rounded-2xl border border-dashed border-primary/40 bg-primary-soft p-3 text-sm text-secondary">

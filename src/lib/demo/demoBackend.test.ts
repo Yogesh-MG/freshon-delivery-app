@@ -26,23 +26,23 @@ describe("demo backend rider flow", () => {
     expect((await get<{ trip: DeliveryTrip }>("/api/delivery-partner/trips/active/"))!.data!.trip.id).toBe(target.id);
 
     // Pickup is refused until every bag code is in the batch — the gate the UI
-    // relies on. Codes are the order id behind a "D-" prefix, nothing else.
+    // relies on. A code is D-<order>-<bagIndex>; the trailing index is required.
     const bags = target.stops
       .filter((s) => s.type === "dropoff")
-      .map((s) => ({ stop_id: s.id, order_id: s.order_id!, code: `D-${s.order_id}` }));
+      .map((s) => ({ stop_id: s.id, order_id: s.order_id!, code: `D-${s.order_id}-1` }));
 
     const early = await post(`/api/delivery-partner/trips/${target.id}/pickup/`, {
       trip_id: target.id,
       bags: bags.slice(0, 2),
     });
-    expect(early!.error).toMatch(/unscanned/);
+    expect(early!.error).toMatch(/not scanned yet/);
 
     // A bag belonging to some other trip is refused outright.
     const foreign = await post(`/api/delivery-partner/trips/${target.id}/pickup/`, {
       trip_id: target.id,
-      bags: [...bags.slice(0, 2), { stop_id: "x", order_id: "FRSH-NOPE", code: "D-FRSH-NOPE" }],
+      bags: [...bags.slice(0, 2), { stop_id: "x", order_id: "FRSH-NOPE", code: "D-FRSH-NOPE-1" }],
     });
-    expect(foreign!.error).toMatch(/isn't on this trip/);
+    expect(foreign!.error).toMatch(/does not match stop/);
 
     const picked = await post<{ trip: DeliveryTrip }>(`/api/delivery-partner/trips/${target.id}/pickup/`, {
       trip_id: target.id,

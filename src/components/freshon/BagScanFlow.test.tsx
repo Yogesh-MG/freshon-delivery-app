@@ -79,21 +79,45 @@ describe("BagScanFlow hub handover", () => {
   it("counts a bag whose code is the order id behind a D- prefix", () => {
     render(<BagScanFlow trip={trip(0)} onAllScanned={vi.fn()} />);
 
-    scan("D-FRSH-A434E1");
+    scan("D-FRSH-A434E1-1");
     expect(screen.getByText("1 / 2 bags scanned")).toBeInTheDocument();
+  });
+
+  it("counts the bare-suffix spelling the printed codes also use", () => {
+    render(<BagScanFlow trip={trip(0)} onAllScanned={vi.fn()} />);
+
+    // D-A434E1-1 and D-FRSH-A434E1-1 are the same bag; the server assumes the
+    // FRSH- prefix when a code carries only the suffix.
+    scan("D-A434E1-1");
+    expect(screen.getByText("1 / 2 bags scanned")).toBeInTheDocument();
+  });
+
+  it("sends a bag index even when the scanned code carries none", async () => {
+    // Regression: the live API reads the last segment as the bag index, so a
+    // bare D-FRSH-A434E1 resolves to FRSH-FRSH and the handover is refused.
+    // The scan is still accepted — it is a real bag — but it goes out as bag 1.
+    const onAllScanned = vi.fn().mockResolvedValue(undefined);
+    render(<BagScanFlow trip={trip(1)} onAllScanned={onAllScanned} />);
+
+    scan("D-FRSH-A434E2");
+    await waitFor(() =>
+      expect(onAllScanned).toHaveBeenCalledWith([
+        { stop_id: "s2", order_id: "FRSH-A434E2", code: "D-FRSH-A434E2-1" },
+      ]),
+    );
   });
 
   it("accepts a lowercase manually-typed code", () => {
     render(<BagScanFlow trip={trip(0)} onAllScanned={vi.fn()} />);
 
-    scan("d-frsh-a434e1");
+    scan("d-frsh-a434e1-1");
     expect(screen.getByText("1 / 2 bags scanned")).toBeInTheDocument();
   });
 
   it("refuses a code with no D- prefix", () => {
     render(<BagScanFlow trip={trip(0)} onAllScanned={vi.fn()} />);
 
-    scan("FRSH-A434E1");
+    scan("FRSH-A434E1-1");
     expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/not a bag code/i));
     expect(screen.getByText("0 / 2 bags scanned")).toBeInTheDocument();
   });
@@ -101,7 +125,7 @@ describe("BagScanFlow hub handover", () => {
   it("refuses a bag belonging to another trip", () => {
     render(<BagScanFlow trip={trip(0)} onAllScanned={vi.fn()} />);
 
-    scan("D-FRSH-ZZZZZZ");
+    scan("D-FRSH-ZZZZZZ-1");
     expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/isn't on this trip/i));
     expect(screen.getByText("0 / 2 bags scanned")).toBeInTheDocument();
   });
@@ -109,8 +133,8 @@ describe("BagScanFlow hub handover", () => {
   it("refuses the same bag twice rather than counting it as two", () => {
     render(<BagScanFlow trip={trip(0)} onAllScanned={vi.fn()} />);
 
-    scan("D-FRSH-A434E1");
-    scan("D-FRSH-A434E1");
+    scan("D-FRSH-A434E1-1");
+    scan("D-FRSH-A434E1-1");
     expect(toast.error).toHaveBeenCalledWith(expect.stringMatching(/already scanned/i));
     expect(screen.getByText("1 / 2 bags scanned")).toBeInTheDocument();
   });
@@ -119,13 +143,13 @@ describe("BagScanFlow hub handover", () => {
     const onAllScanned = vi.fn().mockResolvedValue(undefined);
     render(<BagScanFlow trip={trip(0)} onAllScanned={onAllScanned} />);
 
-    scan("D-FRSH-A434E1");
-    scan("D-FRSH-A434E2");
+    scan("D-FRSH-A434E1-1");
+    scan("D-FRSH-A434E2-1");
 
     await waitFor(() =>
       expect(onAllScanned).toHaveBeenCalledWith([
-        { stop_id: "s1", order_id: "FRSH-A434E1", code: "D-FRSH-A434E1" },
-        { stop_id: "s2", order_id: "FRSH-A434E2", code: "D-FRSH-A434E2" },
+        { stop_id: "s1", order_id: "FRSH-A434E1", code: "D-FRSH-A434E1-1" },
+        { stop_id: "s2", order_id: "FRSH-A434E2", code: "D-FRSH-A434E2-1" },
       ]),
     );
   });
@@ -135,14 +159,14 @@ describe("BagScanFlow hub handover", () => {
     render(<BagScanFlow trip={trip(0)} onAllScanned={onAllScanned} />);
 
     // Scanner opens on stop 1; the bag in hand is stop 2's.
-    scan("D-FRSH-A434E2");
+    scan("D-FRSH-A434E2-1");
     expect(screen.getByText("1 / 2 bags scanned")).toBeInTheDocument();
 
-    scan("D-FRSH-A434E1");
+    scan("D-FRSH-A434E1-1");
     await waitFor(() =>
       expect(onAllScanned).toHaveBeenCalledWith([
-        { stop_id: "s2", order_id: "FRSH-A434E2", code: "D-FRSH-A434E2" },
-        { stop_id: "s1", order_id: "FRSH-A434E1", code: "D-FRSH-A434E1" },
+        { stop_id: "s2", order_id: "FRSH-A434E2", code: "D-FRSH-A434E2-1" },
+        { stop_id: "s1", order_id: "FRSH-A434E1", code: "D-FRSH-A434E1-1" },
       ]),
     );
   });

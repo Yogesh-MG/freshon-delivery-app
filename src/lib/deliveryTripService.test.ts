@@ -66,7 +66,7 @@ describe("drop-off contact number", () => {
       data: { trip: tripWith(stop({ customer_phone: "+91 99016 55801", bag_scanned: true })) },
     });
     const result = await DeliveryTripService.confirmTripPickup("t1", [
-      { stop_id: "s1", order_id: "FRSH-A434EB", code: "D-FRSH-A434EB" },
+      { stop_id: "s1", order_id: "FRSH-A434EB", code: "D-FRSH-A434EB-1" },
     ]);
     expect(result.data?.stops[0].customer_phone).toBe("+91 99016 55801");
   });
@@ -74,8 +74,8 @@ describe("drop-off contact number", () => {
   it("reports every bag code alongside the trip it belongs to", async () => {
     post.mockResolvedValue({ status: 200, data: { trip: tripWith(stop()) } });
     const bags = [
-      { stop_id: "s1", order_id: "FRSH-A434EB", code: "D-FRSH-A434EB" },
-      { stop_id: "s2", order_id: "FRSH-B111CC", code: "D-FRSH-B111CC" },
+      { stop_id: "s1", order_id: "FRSH-A434EB", code: "D-FRSH-A434EB-1" },
+      { stop_id: "s2", order_id: "FRSH-B111CC", code: "D-FRSH-B111CC-1" },
     ];
     await DeliveryTripService.confirmTripPickup("t1", bags);
     expect(post).toHaveBeenCalledWith("/api/delivery-partner/trips/t1/pickup/", {
