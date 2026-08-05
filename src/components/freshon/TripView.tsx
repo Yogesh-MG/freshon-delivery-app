@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, ExternalLink, IndianRupee, Loader2, MapPin, Navigation, RefreshCw, Route, X } from "lucide-react";
 import { DeliveryTrip, TripStop, tripKm } from "@/lib/deliveryTripService";
+import type { ScannedBag } from "@/lib/bagCode";
 import { openInGoogleMaps } from "@/lib/mapApps";
 import { BagScanFlow } from "./BagScanFlow";
 import { DeliveryMap, MapStop } from "./DeliveryMap";
@@ -10,7 +11,6 @@ export const TripView = ({
   trip,
   rider,
   onConfirmPickup,
-  onTripUpdate,
   onOpenStop,
   onReoptimize,
   onCancel,
@@ -22,9 +22,9 @@ export const TripView = ({
   /** Re-sample the rider's GPS. Called when the map destination is toggled so
    *  the drawn leg starts from where they are now, not where they were. */
   onRefreshPosition?: () => void;
-  /** Confirms the hub handover. Fired automatically by the last bag scan. */
-  onConfirmPickup: () => void | Promise<void>;
-  onTripUpdate: (trip: DeliveryTrip) => void;
+  /** Confirms the hub handover with the bag codes read at the hub. Fired
+   *  automatically by the last bag scan. */
+  onConfirmPickup: (bags: ScannedBag[]) => void | Promise<void>;
   onOpenStop: (stop: TripStop) => void;
   onReoptimize: () => void;
   onCancel?: () => Promise<void>;
@@ -46,11 +46,10 @@ export const TripView = ({
 
   /**
    * Where the external Google Maps hand-off points. Gated on the hub handover:
-   * every bag must be scanned before navigation will take the rider onward, so
-   * nobody leaves the hub with an unaccounted bag.
+   * bag codes are only reported once the rider confirms it, so the trip leaving
+   * ASSIGNED is the signal that nobody is walking off with an unaccounted bag.
    */
-  const allBagsScanned = dropoffs.length > 0 && dropoffs.every((s) => s.bag_scanned);
-  const navDest: RouteDest = awaitingPickup && !allBagsScanned ? "hub" : "dropoff";
+  const navDest: RouteDest = awaitingPickup ? "hub" : "dropoff";
 
   // What the on-screen map draws — the rider's own choice, so they can preview
   // the drop-off route while still scanning at the hub. Follows `navDest` by
@@ -176,12 +175,7 @@ export const TripView = ({
       </button>
 
       {awaitingPickup && (
-        <BagScanFlow
-          trip={trip}
-          onTripUpdate={onTripUpdate}
-          onAllScanned={onConfirmPickup}
-          busy={busy}
-        />
+        <BagScanFlow trip={trip} onAllScanned={onConfirmPickup} busy={busy} />
       )}
 
       {awaitingPickup && onCancel && (

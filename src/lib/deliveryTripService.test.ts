@@ -60,13 +60,28 @@ describe("drop-off contact number", () => {
     expect(result.data?.stops[0].customer_phone).toBeUndefined();
   });
 
-  it("survives a scan-bag response, not just the initial load", async () => {
+  it("survives a handover response, not just the initial load", async () => {
     post.mockResolvedValue({
       status: 200,
       data: { trip: tripWith(stop({ customer_phone: "+91 99016 55801", bag_scanned: true })) },
     });
-    const result = await DeliveryTripService.scanBag("t1", "CODE");
+    const result = await DeliveryTripService.confirmTripPickup("t1", [
+      { stop_id: "s1", order_id: "FRSH-A434EB", code: "D-FRSH-A434EB" },
+    ]);
     expect(result.data?.stops[0].customer_phone).toBe("+91 99016 55801");
+  });
+
+  it("reports every bag code alongside the trip it belongs to", async () => {
+    post.mockResolvedValue({ status: 200, data: { trip: tripWith(stop()) } });
+    const bags = [
+      { stop_id: "s1", order_id: "FRSH-A434EB", code: "D-FRSH-A434EB" },
+      { stop_id: "s2", order_id: "FRSH-B111CC", code: "D-FRSH-B111CC" },
+    ];
+    await DeliveryTripService.confirmTripPickup("t1", bags);
+    expect(post).toHaveBeenCalledWith("/api/delivery-partner/trips/t1/pickup/", {
+      trip_id: "t1",
+      bags,
+    });
   });
 
   it("ignores a blank string rather than showing an empty Call row", async () => {

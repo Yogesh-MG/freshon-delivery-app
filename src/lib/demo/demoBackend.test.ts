@@ -25,20 +25,31 @@ describe("demo backend rider flow", () => {
     expect((await get<{ trips: DeliveryTrip[] }>("/api/delivery-partner/trips/available/"))!.data!.trips).toHaveLength(0);
     expect((await get<{ trip: DeliveryTrip }>("/api/delivery-partner/trips/active/"))!.data!.trip.id).toBe(target.id);
 
-    // Pickup is refused until every bag is scanned — the gate the UI relies on.
-    const early = await post(`/api/delivery-partner/trips/${target.id}/pickup/`);
+    // Pickup is refused until every bag code is in the batch — the gate the UI
+    // relies on. Codes are the order id behind a "D-" prefix, nothing else.
+    const bags = target.stops
+      .filter((s) => s.type === "dropoff")
+      .map((s) => ({ stop_id: s.id, order_id: s.order_id!, code: `D-${s.order_id}` }));
+
+    const early = await post(`/api/delivery-partner/trips/${target.id}/pickup/`, {
+      trip_id: target.id,
+      bags: bags.slice(0, 2),
+    });
     expect(early!.error).toMatch(/unscanned/);
 
-    for (let i = 0; i < 3; i++) {
-      const scanned = await post<{ trip: DeliveryTrip }>(`/api/delivery-partner/trips/${target.id}/scan-bag/`, {
-        code: "DEMO-ANYTHING",
-      });
-      const done = scanned!.data!.trip.stops.filter((s) => s.type === "dropoff" && s.bag_scanned);
-      expect(done).toHaveLength(i + 1);
-    }
+    // A bag belonging to some other trip is refused outright.
+    const foreign = await post(`/api/delivery-partner/trips/${target.id}/pickup/`, {
+      trip_id: target.id,
+      bags: [...bags.slice(0, 2), { stop_id: "x", order_id: "FRSH-NOPE", code: "D-FRSH-NOPE" }],
+    });
+    expect(foreign!.error).toMatch(/isn't on this trip/);
 
-    const picked = await post<{ trip: DeliveryTrip }>(`/api/delivery-partner/trips/${target.id}/pickup/`);
+    const picked = await post<{ trip: DeliveryTrip }>(`/api/delivery-partner/trips/${target.id}/pickup/`, {
+      trip_id: target.id,
+      bags,
+    });
     expect(picked!.data!.trip.status).toBe("ACTIVE");
+    expect(picked!.data!.trip.stops.filter((s) => s.type === "dropoff" && s.bag_scanned)).toHaveLength(3);
 
     const drops = picked!.data!.trip.stops.filter((s) => s.type === "dropoff");
     for (const stop of drops) {

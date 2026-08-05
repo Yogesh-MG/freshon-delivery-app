@@ -1,5 +1,6 @@
 import { apiClient } from "./apiClient";
 import { ApiResult } from "./types";
+import type { ScannedBag } from "./bagCode";
 import { recordStopShape } from "./devProbe";
 
 export interface TripStop {
@@ -142,16 +143,16 @@ export class DeliveryTripService {
     return { success: true, data: response.data?.trip ? normalizeTrip(response.data.trip) : undefined };
   }
 
-  static async confirmTripPickup(id: string): Promise<ApiResult<DeliveryTrip>> {
-    const response = await apiClient.post<{ trip: DeliveryTrip }>(`/api/delivery-partner/trips/${id}/pickup/`);
-    if (response.error) return { success: false, error: response.error };
-    return { success: true, data: response.data?.trip ? normalizeTrip(response.data.trip) : undefined };
-  }
-
-  static async scanBag(tripId: string, code: string): Promise<ApiResult<DeliveryTrip>> {
+  /**
+   * Hub handover. Bag codes are matched to their drop-off on the device as they
+   * are scanned (see lib/bagCode.ts), then reported here in one batch alongside
+   * the trip they belong to — the backend re-checks them and rejects the
+   * handover if any order id is unaccounted for.
+   */
+  static async confirmTripPickup(id: string, bags: ScannedBag[] = []): Promise<ApiResult<DeliveryTrip>> {
     const response = await apiClient.post<{ trip: DeliveryTrip }>(
-      `/api/delivery-partner/trips/${tripId}/scan-bag/`,
-      { code },
+      `/api/delivery-partner/trips/${id}/pickup/`,
+      { trip_id: id, bags },
     );
     if (response.error) return { success: false, error: response.error };
     return { success: true, data: response.data?.trip ? normalizeTrip(response.data.trip) : undefined };

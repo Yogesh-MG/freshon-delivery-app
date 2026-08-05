@@ -1,28 +1,39 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, MapPin, Package, ScanLine } from "lucide-react";
 import { toast } from "sonner";
-import { DeliveryTrip, DeliveryTripService, TripStop } from "@/lib/deliveryTripService";
+import { DeliveryTrip, TripStop } from "@/lib/deliveryTripService";
+import {
+    BAG_CODE_PREFIX,
+    ScannedBag,
+    bagCodeForOrder,
+    matchBagCode,
+    stopRef,
+    unverifiedStops,
+} from "@/lib/bagCode";
 import { QrScanner } from "./QrScanner";
 
 interface Props {
     trip: DeliveryTrip;
-    onTripUpdate: (trip: DeliveryTrip) => void;
-    /** Confirms the hub pickup. Fired automatically by the last bag scan. */
-    onAllScanned: () => void | Promise<void>;
+    /** Confirms the hub pickup with every bag code read on the way there.
+     *  Fired automatically by the last bag scan. */
+    onAllScanned: (bags: ScannedBag[]) => void | Promise<void>;
     busy?: boolean;
 }
 
-export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) => {
+export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
     const [scanningStop, setScanningStop] = useState<TripStop | null>(null);
-    const [scanning, setScanning] = useState(false);
+    // Codes verified against this trip so far. Held on the device until the
+    // handover — the backend hears about them once, in the pickup batch.
+    const [bags, setBags] = useState<ScannedBag[]>([]);
     // Set only if the auto-confirm came back without the trip moving on, which
     // leaves the rider needing a way to retry.
     const [confirmFailed, setConfirmFailed] = useState(false);
 
     const dropoffs = trip.stops.filter((s) => s.type === "dropoff");
-    const scannedCount = dropoffs.filter((s) => s.bag_scanned).length;
+    const isScanned = (stop: TripStop) => stop.bag_scanned || bags.some((b) => b.stop_id === stop.id);
+    const scannedCount = dropoffs.filter(isScanned).length;
     const allScanned = dropoffs.length > 0 && scannedCount === dropoffs.length;
-    const nextUnscanned = dropoffs.find((s) => !s.bag_scanned) ?? null;
+    const nextUnscanned = dropoffs.find((s) => !isScanned(s)) ?? null;
 
     /**
      * Scanning the last bag IS the handover confirmation — there is nothing left
@@ -36,7 +47,16 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
 
     const confirmPickup = () => {
         setConfirmFailed(false);
-        void Promise.resolve(onAllScanned()).finally(() => {
+        // Every order id has to be covered by a scanned code before the handover
+        // is worth asserting — the backend checks the same thing on the batch,
+        // this just saves a doomed round trip.
+        const missing = unverifiedStops(trip.stops, bags);
+        if (missing.length > 0) {
+            setConfirmFailed(true);
+            toast.error(`Handover rejected — scan ${missing.map(stopRef).join(", ")}`);
+            return;
+        }
+        void Promise.resolve(onAllScanned(bags)).finally(() => {
             // Still mounted afterwards means the trip never left ASSIGNED — the
             // confirm was rejected, so surface a retry rather than a dead end.
             if (mountedRef.current) setConfirmFailed(true);
@@ -50,21 +70,32 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [allScanned]);
 
-    const handleScan = async (code: string) => {
+    /**
+     * A bag code is the order id behind a "D-" prefix, so the code itself says
+     * which stop was scanned — whichever row the rider tapped, the bag in their
+     * hand decides. Anything that doesn't resolve to an outstanding drop-off on
+     * this trip is refused here, before it can count towards the handover.
+     */
+    const handleScan = (raw: string) => {
         setScanningStop(null);
-        setScanning(true);
-        const result = await DeliveryTripService.scanBag(trip.id, code);
-        setScanning(false);
-        if (!result.success || !result.data) {
-            toast.error(result.error || "Scan failed — try again");
+        const match = matchBagCode(raw, trip.stops, bags);
+        if (!match.ok) {
+            toast.error(
+                match.reason === "malformed"
+                    ? `Not a bag code — expected ${BAG_CODE_PREFIX}FRSH-XXXXXX`
+                    : match.reason === "duplicate"
+                        ? `Order ${match.orderId} is already scanned`
+                        : `Order ${match.orderId} isn't on this trip`,
+            );
             return;
         }
-        onTripUpdate(result.data);
-        const newScanned = result.data.stops.filter((s) => s.type === "dropoff" && s.bag_scanned).length;
-        const total = result.data.stops.filter((s) => s.type === "dropoff").length;
+
+        const next = [...bags, { stop_id: match.stop.id, order_id: match.orderId, code: match.code }];
+        setBags(next);
         // The last scan stays quiet — confirming the pickup raises its own toast,
         // and two in a row for one tap reads as a stutter.
-        if (newScanned < total) toast.success(`Bag scanned · ${newScanned}/${total} done`);
+        const done = dropoffs.filter((s) => s.bag_scanned || next.some((b) => b.stop_id === s.id)).length;
+        if (done < dropoffs.length) toast.success(`Bag scanned · ${done}/${dropoffs.length} done`);
     };
 
     return (
@@ -95,7 +126,7 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
             {/* Per-bag checklist */}
             <div className="space-y-2">
                 {dropoffs.map((stop, i) => {
-                    const done = stop.bag_scanned;
+                    const done = isScanned(stop);
                     const isNext = !done && stop.id === nextUnscanned?.id;
                     return (
                         <div
@@ -137,7 +168,7 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
                             {!done && (
                                 <button
                                     onClick={() => setScanningStop(stop)}
-                                    disabled={scanning || busy}
+                                    disabled={busy}
                                     aria-label={`Scan bag for ${stop.order_id || stop.label}`}
                                     className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition active:scale-95 disabled:opacity-50 ${isNext
                                         ? "bg-primary text-primary-foreground shadow-glow-primary"
@@ -157,15 +188,13 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
             {!allScanned ? (
                 <button
                     onClick={() => setScanningStop(nextUnscanned)}
-                    disabled={scanning || busy || !nextUnscanned}
+                    disabled={busy || !nextUnscanned}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.99] disabled:opacity-50"
                 >
                     <ScanLine className="h-4 w-4" />
-                    {scanning
-                        ? "Processing…"
-                        : scannedCount + 1 === dropoffs.length
-                            ? `Scan last bag · confirms handover`
-                            : `Scan bag ${scannedCount + 1} of ${dropoffs.length}`}
+                    {scannedCount + 1 === dropoffs.length
+                        ? `Scan last bag · confirms handover`
+                        : `Scan bag ${scannedCount + 1} of ${dropoffs.length}`}
                 </button>
             ) : confirmFailed ? (
                 <button
@@ -186,7 +215,8 @@ export const BagScanFlow = ({ trip, onTripUpdate, onAllScanned, busy }: Props) =
             {scanningStop && (
                 <QrScanner
                     title={`Scan bag for stop ${dropoffs.indexOf(scanningStop) + 1}`}
-                    hint={`${scanningStop.customer || scanningStop.label} · ${scanningStop.address}`}
+                    hint={`${bagCodeForOrder(scanningStop.order_id)} · ${scanningStop.customer || scanningStop.label}`}
+                    demoCode={bagCodeForOrder(scanningStop.order_id)}
                     onScan={handleScan}
                     onCancel={() => setScanningStop(null)}
                 />

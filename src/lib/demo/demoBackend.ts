@@ -6,10 +6,10 @@
  *   pool → accept → scan each bag → confirm hub pickup → deliver each stop →
  *   trip completes, earnings bump, rider drops back to the pool
  *
- * Every gate the real backend enforces is enforced here too (you cannot confirm
- * pickup with an unscanned bag, cannot deliver before pickup) — the difference
- * is that the bag QR and the customer OTP accept anything, since neither exists
- * in a browser. Endpoints not listed here return null so apiClient falls through
+ * Every gate the real backend enforces is enforced here too (the hub handover
+ * is refused unless its batch of bag codes covers every drop-off, you cannot
+ * deliver before pickup) — the difference is that the customer OTP accepts
+ * anything. Endpoints not listed here return null so apiClient falls through
  * to the real network.
  *
  * Dev-only: reachable solely through isDemoMode(), which is constant-false in
@@ -17,6 +17,7 @@
  */
 
 import type { ApiResponse } from "../apiClient";
+import { normalizeOrderId, orderIdFromBagCode } from "../bagCode";
 import { tripKm } from "../deliveryTripService";
 import type { DeliveryTrip, TripStop } from "../deliveryTripService";
 import type { Assignment, EarningsStats } from "../types";
@@ -222,7 +223,7 @@ const parseBody = (body: BodyInit | null | undefined): Record<string, unknown> =
 
 // ── Router ───────────────────────────────────────────────────────────────────
 
-const TRIP_ACTION = /^\/api\/delivery-partner\/trips\/([^/]+)\/(accept|pickup|scan-bag|cancel|reoptimize)\/$/;
+const TRIP_ACTION = /^\/api\/delivery-partner\/trips\/([^/]+)\/(accept|pickup|cancel|reoptimize)\/$/;
 const ASSIGNMENT_ACTION = /^\/api\/delivery-partner\/assignments\/([^/]+)\/(accept|pickup|transit|deliver|resend-otp)\/$/;
 
 /**
@@ -326,21 +327,31 @@ export async function handleDemoRequest<T>(
                 return ok({ trip }) as ApiResponse<T>;
             }
 
-            case "scan-bag": {
-                const code = String(parseBody(body).code ?? "").trim();
-                if (!code) return fail<T>("No code read — try again");
-                // Any code passes in demo; the real backend matches it to a bag.
-                const next = dropoffsOf(trip).find((s) => !s.bag_scanned);
-                if (!next) return fail<T>("Every bag on this trip is already scanned");
-                next.bag_scanned = true;
-                return ok({ trip }) as ApiResponse<T>;
-            }
-
             case "pickup": {
-                const unscanned = dropoffsOf(trip).filter((s) => !s.bag_scanned);
+                // The handover arrives as one batch of bag codes. Re-derive the
+                // order id behind each "D-" and demand full, exact coverage of
+                // the trip's drop-offs — anything short of that is refused, the
+                // same check the real backend owns.
+                const raw = parseBody(body).bags;
+                const codes = (Array.isArray(raw) ? raw : [])
+                    .map((b) => orderIdFromBagCode(String((b as { code?: unknown })?.code ?? "")))
+                    .filter((id): id is string => !!id);
+
+                const onTrip = new Set(dropoffsOf(trip).map((s) => normalizeOrderId(s.order_id)));
+                const foreign = codes.filter((id) => !onTrip.has(id));
+                if (foreign.length > 0) return fail<T>(`Bag ${foreign[0]} isn't on this trip`);
+
+                const scanned = new Set(codes);
+                const unscanned = dropoffsOf(trip).filter(
+                    (s) => !s.bag_scanned && !scanned.has(normalizeOrderId(s.order_id)),
+                );
                 if (unscanned.length > 0) {
                     return fail<T>(`${unscanned.length} bag(s) still unscanned`);
                 }
+
+                dropoffsOf(trip).forEach((s) => {
+                    if (scanned.has(normalizeOrderId(s.order_id))) s.bag_scanned = true;
+                });
                 trip.status = "ACTIVE";
                 trip.stops.forEach((s) => {
                     if (s.type === "pickup") s.is_completed = true;

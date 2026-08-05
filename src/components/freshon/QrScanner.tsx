@@ -10,11 +10,15 @@ import { isDemoMode } from "@/lib/demo/demoMode";
 export const QrScanner = ({
   title = "Scan handover QR",
   hint = "Point at the QR on the delivery bag",
+  demoCode,
   onScan,
   onCancel,
 }: {
   title?: string;
   hint?: string;
+  /** What "Simulate scan" should hand back in demo mode. Codes are verified
+   *  against the trip now, so a random string would just be refused. */
+  demoCode?: string;
   onScan: (text: string) => void;
   onCancel: () => void;
 }) => {
@@ -79,7 +83,7 @@ export const QrScanner = ({
             </div>
             <div className="text-sm text-primary-foreground/80">{hint}</div>
             <button
-              onClick={() => onScan(`DEMO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)}
+              onClick={() => onScan(demoCode ?? `DEMO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)}
               className="w-full rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber"
             >
               Simulate scan
@@ -116,7 +120,7 @@ export const QrScanner = ({
               autoFocus
               value={manualValue}
               onChange={(e) => setManualValue(e.target.value)}
-              placeholder="D-XXXXXX-1"
+              placeholder="D-FRSH-A434EB"
               className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 font-mono text-lg text-primary-foreground outline-none ring-accent placeholder:text-primary-foreground/40 focus:ring-2"
             />
             <button

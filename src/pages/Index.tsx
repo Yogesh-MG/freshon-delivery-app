@@ -25,6 +25,7 @@ import { DeliveryAssignmentService } from "@/lib/deliveryAssignmentService";
 import { DeliveryStatusService } from "@/lib/deliveryStatusService";
 import { DeliveryPartnerService } from "@/lib/deliveryPartnerService";
 import { DeliveryTrip, DeliveryTripService, TripStop } from "@/lib/deliveryTripService";
+import type { ScannedBag } from "@/lib/bagCode";
 import { useDeliverySocket } from "@/hooks/useDeliverySocket";
 import { TripOffer } from "@/components/freshon/TripOffer";
 import { TripPreview } from "@/components/freshon/TripPreview";
@@ -291,10 +292,10 @@ const Index = () => {
     play("success");
   };
 
-  const confirmTripPickup = async () => {
+  const confirmTripPickup = async (bags: ScannedBag[]) => {
     if (!trip) return;
     setTripBusy(true);
-    const result = await DeliveryTripService.confirmTripPickup(trip.id);
+    const result = await DeliveryTripService.confirmTripPickup(trip.id, bags);
     setTripBusy(false);
     if (!result.success || !result.data) {
       toast.error(result.error || "Unable to confirm pickup");
@@ -335,7 +336,6 @@ const Index = () => {
       longitude: tripStop.longitude,
       assignment_id: tripStop.assignment || undefined,
       order_id: tripStop.order_id,
-      customer_phone: tripStop.customer_phone,
       weight_kg: tripStop.weight_kg,
       parcel_count: tripStop.parcel_count,
     });
@@ -604,7 +604,6 @@ const Index = () => {
                   rider={riderPos}
                   busy={tripBusy}
                   onConfirmPickup={confirmTripPickup}
-                  onTripUpdate={setTrip}
                   onReoptimize={reoptimizeTrip}
                   onOpenStop={openTripStop}
                   onCancel={handleCancelTrip}
