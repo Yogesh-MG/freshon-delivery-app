@@ -1,0 +1,34 @@
+meta {
+  name: 30 Create cash drop
+  type: http
+  seq: 30
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/cash/drop/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "amount": 1000
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.id) {
+    bru.setEnvVar("dropId", res.body.id);
+  }
+}
+
+docs {
+  Implemented in cashDropService.ts but NOT called anywhere in the app —
+  no UI reaches this endpoint today.
+}

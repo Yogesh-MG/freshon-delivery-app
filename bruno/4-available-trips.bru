@@ -1,0 +1,17 @@
+meta {
+  name: 4 Available trips
+  type: http
+  seq: 4
+}
+
+get {
+  url: https://api.freshon.in/api/delivery-partner/trips/available/
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}

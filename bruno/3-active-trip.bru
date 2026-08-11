@@ -1,0 +1,56 @@
+meta {
+  name: 3 Active trip
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/delivery-partner/trips/active/
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+vars:pre-request {
+  baseUrl: https://api.freshon.in
+}
+
+script:post-response {
+  // Build the handover batch the app would send, so request 9 can be fired
+  // straight after this one. A bag code is D-<order_id>-<bagIndex>; the
+  // trailing index is required, or the server reads the reference itself as
+  // the index and the bag resolves to FRSH-FRSH.
+  const trip = res.getBody() && res.getBody().trip;
+  if (!trip) {
+    bru.setVar("bagsJson", "[]");
+    return;
+  }
+
+  bru.setVar("tripId", trip.id);
+  const bags = (trip.stops || [])
+    .filter((s) => s.type === "dropoff")
+    .map((s) => {
+      const orderId = String(s.order_id || "").trim().toUpperCase();
+      return { stop_id: s.id, order_id: orderId, code: "D-" + orderId + "-1" };
+    });
+
+  bru.setVar("bagsJson", JSON.stringify(bags));
+  // A drop-off with no order id cannot be verified — the handover will be
+  // rejected until the payload carries one.
+  const nameless = bags.filter((b) => !b.order_id).length;
+  console.log("trip " + trip.id + " · " + bags.length + " bag(s)" + (nameless ? " · " + nameless + " missing order_id" : ""));
+}
+
+tests {
+  test("drop-offs carry an order id to build bag codes from", function () {
+    const trip = res.getBody().trip;
+    if (!trip) return;
+    const drops = trip.stops.filter((s) => s.type === "dropoff");
+    expect(drops.every((s) => !!s.order_id)).to.equal(true);
+  });
+}

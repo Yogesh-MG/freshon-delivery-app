@@ -1,0 +1,59 @@
+meta {
+  name: 10 Handover rejected (bad bag code)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{tripId}}/pickup/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "trip_id": "{{tripId}}",
+    "bags": {{badBagsJson}}
+  }
+}
+
+script:pre-request {
+  // Takes the real batch from request 3 and corrupts the first bag, so the
+  // batch is the right shape but one order id is not on this trip. Run this
+  // BEFORE request 9 — once the handover succeeds the trip has left ASSIGNED
+  // and this will fail for that reason instead.
+  const bags = JSON.parse(bru.getVar("bagsJson") || "[]");
+  if (!bags.length) {
+    bru.setVar("badBagsJson", '[{"stop_id":"0","order_id":"FRSH-NOPE01","code":"D-FRSH-NOPE01-1"}]');
+  } else {
+    bags[0] = { stop_id: bags[0].stop_id, order_id: "FRSH-NOPE01", code: "D-FRSH-NOPE01-1" };
+    bru.setVar("badBagsJson", JSON.stringify(bags));
+  }
+}
+
+tests {
+  test("handover is refused", function () {
+    expect(res.getStatus()).to.be.within(400, 499);
+  });
+
+  test("refusal says which bag is wrong", function () {
+    expect(JSON.stringify(res.getBody())).to.be.a("string").and.not.equal("{}");
+  });
+}
+
+docs {
+  # Rejection path
+
+  One bag in the batch carries an order id that is not on this trip. The
+  handover must be refused and the trip must stay ASSIGNED — re-run request 3
+  to confirm the status did not move.
+
+  The same shape covers the other rejection: send a short batch (drop a bag
+  from `bagsJson`) and the handover should be refused for incomplete coverage.
+}

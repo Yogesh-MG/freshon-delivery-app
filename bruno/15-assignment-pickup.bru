@@ -1,0 +1,23 @@
+meta {
+  name: 15 Assignment pickup (handover code)
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/pickup/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "handover_code": "{{handoverCode}}"
+  }
+}

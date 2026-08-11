@@ -51,5 +51,8 @@ google-services.json
 # A separate project checked out inside this repo — never commit it here.
 /Freshon-farm-app/
 
-# Local Bruno API collection — dev scratch, not part of the app.
-/bruno/
+# The Bruno API collection IS tracked. Nothing in it may carry a real
+# credential or a real phone number: the collection-level bearer token and the
+# login requests read {{deviceKey}} and {{phone}}, and prod.bru declares
+# deviceKey/refreshToken/accessToken as `vars:secret`, which Bruno keeps in its
+# local store rather than in the file. Fill them in your own environment.

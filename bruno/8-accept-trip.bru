@@ -1,0 +1,22 @@
+meta {
+  name: 8 Accept trip
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{tripId}}/accept/
+  body: none
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+vars:pre-request {
+  tripId: fZIQjIDa3alWKB1jsXp2dXxTAMtM1mlrXCWRJlLJpKU
+  baseUrl: https://api.freshon.in
+}

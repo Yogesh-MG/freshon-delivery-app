@@ -1,0 +1,92 @@
+meta {
+  name: 9 Confirm trip pickup
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{tripId}}/pickup/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "trip_id": "{{tripId}}",
+    "bags": {{bagsJson}}
+  }
+}
+
+script:pre-request {
+  // Run "3 Active trip" first — it fills tripId and bagsJson from the live trip,
+  // with each bag code built as D-<order_id>-<bagIndex>.
+  //
+  // To hand-build a batch instead, set bagsJson to a JSON array literal. The
+  // server only ever parses `code`; stop_id is what it matches the bag against,
+  // and order_id in the body is ignored:
+  //   [{"stop_id":"c61a009a-…","order_id":"FRSH-4CC553","code":"D-FRSH-4CC553-1"}]
+  if (!bru.getVar("bagsJson")) bru.setVar("bagsJson", "[]");
+  console.log("handover batch:", bru.getVar("bagsJson"));
+}
+
+tests {
+  test("handover accepted", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("trip flipped to ACTIVE", function () {
+    expect(res.getBody().trip.status).to.equal("ACTIVE");
+  });
+
+  test("every drop-off came back scanned", function () {
+    const drops = res.getBody().trip.stops.filter((s) => s.type === "dropoff");
+    expect(drops.length).to.be.above(0);
+    expect(drops.every((s) => s.bag_scanned)).to.equal(true);
+  });
+
+  test("the hub stop is completed", function () {
+    const hub = res.getBody().trip.stops.filter((s) => s.type === "pickup");
+    expect(hub.every((s) => s.is_completed)).to.equal(true);
+  });
+}
+
+docs {
+  # Hub handover
+
+  Replaces the old per-bag `scan-bag/` call: the whole verified batch is
+  reported here in one request, alongside the trip it belongs to.
+
+  ## Bag code format — verified against the live API
+
+  A code is `D-<order>-<bagIndex>`. The server strips `D-`, drops the LAST
+  `-` segment as the bag index, then prepends `FRSH-` if what remains does not
+  already start with it:
+
+      D-4CC553-1        → FRSH-4CC553    200
+      D-FRSH-4CC553-1   → FRSH-4CC553    200
+      D-FRSH-4CC553     → FRSH-FRSH      400  "Bag FRSH-FRSH does not match stop …"
+      D-4CC553          → —              400  "Unrecognised code … (starts with D-)"
+      FRSH-4CC553       → —              400  "Unrecognised code … (starts with D-)"
+
+  The trailing index is REQUIRED — without it the reference itself is eaten as
+  the index. Both spellings of the order part work.
+
+  ## Body
+
+      {
+        "trip_id": "<trip id>",
+        "bags": [
+          { "stop_id": "<stop id>", "order_id": "FRSH-4CC553", "code": "D-FRSH-4CC553-1" }
+        ]
+      }
+
+  Every drop-off on the trip must be covered or the handover is refused with
+  `N bag(s) not scanned yet` and the trip stays ASSIGNED. Request 10 exercises
+  the rejection path.
+}

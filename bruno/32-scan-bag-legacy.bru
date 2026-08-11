@@ -1,0 +1,64 @@
+meta {
+  name: 32 Scan bag (legacy, backend probe)
+  type: http
+  seq: 32
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{tripId}}/scan-bag/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "code": "{{bagCode}}"
+  }
+}
+
+script:pre-request {
+  // Defaults to the first drop-off's D-<order_id>-<bagIndex> code, so this
+  // doubles as a probe: does the server care what the code says, or does any
+  // string flip bag_scanned?
+  if (!bru.getVar("bagCode")) {
+    const bags = JSON.parse(bru.getVar("bagsJson") || "[]");
+    const next = bags.find((b) => b.code);
+    if (next) bru.setVar("bagCode", next.code);
+  }
+}
+
+tests {
+  test("scan accepted", function () {
+    expect(res.getStatus()).to.equal(200);
+  });
+
+  test("a drop-off came back scanned", function () {
+    const drops = res.getBody().trip.stops.filter((s) => s.type === "dropoff");
+    expect(drops.some((s) => s.bag_scanned)).to.equal(true);
+  });
+}
+
+docs {
+  # Legacy per-bag scan — probe only
+
+  The app no longer calls this; it verifies codes on the device and reports the
+  batch to `pickup/` instead (request 9). This request is kept to work against
+  the backend as it stands today, and to answer two questions:
+
+  1. Does `scan-bag/` parse codes the same way `pickup/` does — strip `D-`,
+     drop the trailing `-<bagIndex>`, assume a `FRSH-` prefix?
+     Send a deliberate nonsense code and see whether it is refused.
+  2. Does it mark the drop-off the code names, or just the next unscanned one?
+     Scan the SECOND drop-off's code first and check which stop flipped.
+
+  Not needed for a handover. `pickup/` was verified against the live API to
+  read the `bags` batch and validate every code itself, so request 9 alone
+  completes the flow. This endpoint is also ASSIGNED-only — once the trip is
+  ACTIVE it answers 404 `"Trip not found or not in ASSIGNED state"`.
+}
