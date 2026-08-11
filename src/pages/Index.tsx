@@ -14,7 +14,7 @@ import { DeliveryMap } from "@/components/freshon/DeliveryMap";
 import { TripView } from "@/components/freshon/TripView";
 import { RouteList } from "@/components/freshon/RouteList";
 import { FeeBreakdown } from "@/components/freshon/FeeBreakdown";
-import { ProofDrawer } from "@/components/freshon/ProofDrawer";
+import { ProofDrawer, type ProofOutcome, type ProofSubmission } from "@/components/freshon/ProofDrawer";
 import { QrScanner } from "@/components/freshon/QrScanner";
 import { RouteToggle, RouteDest } from "@/components/freshon/RouteToggle";
 import { play } from "@/lib/sound";
@@ -30,7 +30,9 @@ import { useDeliverySocket } from "@/hooks/useDeliverySocket";
 import { TripOffer } from "@/components/freshon/TripOffer";
 import { TripPreview } from "@/components/freshon/TripPreview";
 import { TripDistance, tripWeightKg, useTripDistance } from "@/lib/tripDistance";
-import { isDemoMode } from "@/lib/demo/demoMode";
+import { getCurrentCoords, useWatchRiderPosition, type RiderPosition } from "@/lib/riderPosition";
+import { classifyDeliveryError, type DeliveryFailure } from "@/lib/deliveryErrors";
+import { useStopProximity } from "@/lib/stopProximity";
 
 const emptyStats: EarningsStats = {
   earnings: 0,
@@ -148,7 +150,7 @@ const Index = () => {
   const [trip, setTrip] = useState<DeliveryTrip | null>(null);
   const [availableTrips, setAvailableTrips] = useState<DeliveryTrip[]>([]);
   const [previewTrip, setPreviewTrip] = useState<DeliveryTrip | null>(null);
-  const [riderPos, setRiderPos] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [riderPos, setRiderPos] = useState<RiderPosition | null>(null);
   const [tripBusy, setTripBusy] = useState(false);
 
   // Quoted distance covers the ride to the hub as well as the drops themselves.
@@ -204,6 +206,11 @@ const Index = () => {
    * this and both come straight back.
    */
   const hasActiveWork = tripInProgress || missionInProgress;
+
+  // While work is running the rider's position drives the proof-of-delivery
+  // gate, so it has to follow them rather than sit on the fix taken when the
+  // trip was accepted. Watching stops the moment the work does.
+  useWatchRiderPosition(hasActiveWork, setRiderPos);
 
   // Hand live-location duty to the native Android foreground service while a
   // delivery is running. The JS WebSocket heartbeat (deliverySocket.ts) freezes
@@ -338,8 +345,72 @@ const Index = () => {
       order_id: tripStop.order_id,
       weight_kg: tripStop.weight_kg,
       parcel_count: tripStop.parcel_count,
+      cod_amount: tripStop.cod_amount,
     });
   };
+
+  /**
+   * The drop-offs still to be proved, whichever flow they came from. Each target
+   * carries its own `open` because a trip stop has to be projected onto a `Stop`
+   * first while a mission stop already is one — the proximity gate shouldn't
+   * have to know the difference.
+   */
+  const proofTargets = useMemo(() => {
+    if (trip) {
+      if (trip.status !== "ACTIVE") return [];
+      return trip.stops
+        .filter((s) => s.type === "dropoff" && !s.is_completed)
+        .map((s) => ({
+          id: s.id,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          open: () => openTripStop(s),
+        }));
+    }
+    if (activeMission && activeMission.status !== "PENDING") {
+      return activeMission.stops
+        .filter((s) => s.type === "dropoff" && !completedStopIds.has(s.id))
+        .map((s) => ({
+          id: s.id,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          open: () => setOpenStop(s),
+        }));
+    }
+    return [];
+  }, [trip, activeMission, completedStopIds]);
+
+  const { of: proximityOf, inRange } = useStopProximity(proofTargets, riderPos);
+
+  /**
+   * Arrival opens the sheet for the rider. On a batch that is the *nearest*
+   * in-range drop — several stops of one batch often sit in the same lane, and
+   * picking the right row while holding bags is exactly the friction this
+   * removes. Single orders are the same rule with a list of one.
+   *
+   * Each stop is offered once: a rider who closes the sheet to call the customer
+   * first must not have to fight it reopening. Walking out of range re-arms it,
+   * so coming back around opens it again.
+   */
+  const autoOpened = useRef(new Set<string>());
+  const inRangeKey = inRange.map((entry) => entry.target.id).join("|");
+  useEffect(() => {
+    const ids = new Set(inRange.map((entry) => entry.target.id));
+    autoOpened.current.forEach((id) => {
+      if (!ids.has(id)) autoOpened.current.delete(id);
+    });
+
+    const nearest = inRange[0];
+    if (!nearest || autoOpened.current.has(nearest.target.id)) return;
+    // Never yank the screen out from under a sheet, scanner or offer already up.
+    if (openStop || pickupScanStop || previewTrip || offeredTrip) return;
+
+    autoOpened.current.add(nearest.target.id);
+    nearest.target.open();
+    play("tick");
+    // `inRangeKey` stands in for `inRange`, which is a fresh array per GPS sample.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inRangeKey, openStop, pickupScanStop, previewTrip, offeredTrip]);
 
   const updateOnline = async (nextOnline: boolean) => {
     // A partner can only go online once verified. Guard here too in case the UI
@@ -441,25 +512,30 @@ const Index = () => {
     play("success");
   };
 
-  const completeStop = async (
-    stop: Stop,
-    proof: { type: "otp" | "photo"; otpCode?: string; photo?: File; codCollected?: boolean },
-  ) => {
+  /**
+   * Proof photos already stored, keyed by stop.
+   *
+   * The upload has to happen before `deliver/`, and `deliver/` is the call that
+   * rejects a wrong OTP — so without this, every re-entered code uploaded the
+   * same photo again and left the failed ones orphaned in storage with no row
+   * pointing at them. The `File` identity is part of the key, so a retake is
+   * correctly treated as a different photo and does get re-uploaded.
+   */
+  const uploadedProof = useRef(new Map<string, { file: File; url: string | null }>());
+
+  /** Reports the failure to the rider and hands the drawer enough to react. */
+  const stopFailed = (error: string, failure: DeliveryFailure): ProofOutcome => {
+    toast.error(error);
+    play("error");
+    return { ok: false, error, failure };
+  };
+
+  const completeStop = async (stop: Stop, proof: ProofSubmission): Promise<ProofOutcome> => {
     // Trip drop-offs carry their own assignment id; single missions use the active one.
     const isTripStop = !!stop.assignment_id;
     const assignmentId = stop.assignment_id ?? activeMission?.id;
-    if (!assignmentId) return false;
-
-    if (proof.photo) {
-      const formData = new FormData();
-      formData.append("mission_id", assignmentId);
-      formData.append("photo", proof.photo);
-      const upload = await DeliveryStatusService.uploadProof(formData);
-      if (!upload.success) {
-        toast.error(upload.error || "Photo upload failed");
-        play("error");
-        return false;
-      }
+    if (!assignmentId) {
+      return stopFailed("This stop isn't linked to an assignment yet. Refresh and try again.", "state");
     }
 
     if (stop.type === "pickup") {
@@ -470,32 +546,96 @@ const Index = () => {
       return false;
     }
 
-    // Capture the rider's location: needed for the IN_TRANSIT ping and for the
-    // backend's 300m delivery geofence check.
-    const coords = await getCurrentCoords();
+    /**
+     * The rider's location, for the IN_TRANSIT ping and the backend's 300 m
+     * delivery geofence. `getCurrentCoords` is a one-shot that gives up after
+     * five seconds; the live watch behind `riderPos` is usually warmer, so it
+     * stands in rather than sending the delivery up with no position at all.
+     */
+    const coords = (await getCurrentCoords()) ?? riderPos;
+
+    // A stop the backend sent without coordinates cannot be geofenced at either
+    // end, so it completes without a fix. One that can be is refused here
+    // rather than by an opaque server rejection after the upload.
+    const geofenced = stop.latitude != null && stop.longitude != null;
+    if (!coords && geofenced) {
+      return stopFailed(
+        "Can't confirm your location. Turn location on and try again — the delivery needs it.",
+        "location",
+      );
+    }
+
+    // Ordering: location is checked before the upload so a rider who is going
+    // to be refused hasn't already spent the data on a photo.
+    let proofUrl: string | null = null;
+    if (proof.photo) {
+      const cached = uploadedProof.current.get(stop.id);
+      if (cached && cached.file === proof.photo) {
+        proofUrl = cached.url;
+      } else {
+        const upload = await DeliveryStatusService.uploadProof({
+          missionId: assignmentId,
+          stopId: stop.id,
+          photo: proof.photo,
+          capturedAt: proof.photoMeta?.capturedAt,
+          latitude: proof.photoMeta?.latitude,
+          longitude: proof.photoMeta?.longitude,
+          accuracyM: proof.photoMeta?.accuracy,
+        });
+        if (!upload.success) {
+          const error = upload.error || "Photo upload failed";
+          return stopFailed(error, classifyDeliveryError(error));
+        }
+        proofUrl = upload.data?.url ?? null;
+        uploadedProof.current.set(stop.id, { file: proof.photo, url: proofUrl });
+      }
+    }
 
     // Single-mission flow walks ACCEPTED → IN_TRANSIT before delivery.
     // Trip orders are already PICKED_UP via the trip-level hub pickup.
     if (!isTripStop && activeMission?.status === "ACCEPTED") {
-      await DeliveryAssignmentService.markInTransit(activeMission.id, coords?.latitude, coords?.longitude);
+      const transit = await DeliveryAssignmentService.markInTransit(
+        activeMission.id, coords?.latitude, coords?.longitude,
+      );
+      // Ignoring this used to let the delivery go out against a mission the
+      // backend still had as ACCEPTED, and the rider got the state error from
+      // `deliver/` instead of the real one from here.
+      if (!transit.success) {
+        const error = transit.error || "Couldn't start this delivery. Try again.";
+        return stopFailed(error, classifyDeliveryError(error));
+      }
     }
 
-    const result = await DeliveryAssignmentService.markDelivered(
-      assignmentId, stop.id, proof.type, proof.otpCode, coords?.latitude, coords?.longitude,
-      proof.codCollected,
-    );
+    const result = await DeliveryAssignmentService.markDelivered(assignmentId, {
+      stopId: stop.id,
+      type: proof.type,
+      otpCode: proof.otpCode,
+      latitude: coords?.latitude,
+      longitude: coords?.longitude,
+      accuracyM: coords?.accuracy,
+      codCollected: proof.codCollected,
+      codAmount: proof.codAmount,
+      photoCaptured: !!proof.photo,
+      proofUrl,
+      exceptionReason: proof.exceptionReason,
+    });
     if (!result.success) {
-      toast.error(result.error || "Unable to complete stop");
-      play("error");
-      return false;
+      const error = result.error || "Unable to complete stop";
+      return stopFailed(error, classifyDeliveryError(error));
     }
+
+    // Delivered — the cached upload has done its job and the stop will not be
+    // submitted again.
+    uploadedProof.current.delete(stop.id);
 
     const nextCompleted = new Set(completedStopIds).add(stop.id);
     setCompletedStopIds(nextCompleted);
     if (!isTripStop && activeMission) {
       setAssignments((current) => current.map((item) => item.id === activeMission.id ? { ...item, status: "IN_TRANSIT" } : item));
     }
-    toast.success("Stop completed");
+    toast.success(
+      proof.exceptionReason ? "Stop completed — flagged for review" : "Stop completed",
+    );
     play("success");
     refreshDashboard();
     return true;
@@ -606,6 +746,7 @@ const Index = () => {
                   onConfirmPickup={confirmTripPickup}
                   onReoptimize={reoptimizeTrip}
                   onOpenStop={openTripStop}
+                  proximityOf={proximityOf}
                   onCancel={handleCancelTrip}
                   onRefreshPosition={() => {
                     void getCurrentCoords().then((coords) => coords && setRiderPos(coords));
@@ -646,6 +787,7 @@ const Index = () => {
                         completedStopIds={completedStopIds}
                         onOpenStop={setOpenStop}
                         onPickup={startPickupScan}
+                        proximityOf={proximityOf}
                       />
                       <FeeBreakdown mission={activeMission} />
                     </>
@@ -681,7 +823,17 @@ const Index = () => {
         </div>
       </PhoneFrame>
 
-      <ProofDrawer stop={openStop} onClose={() => setOpenStop(null)} onComplete={completeStop} onResend={resendDeliveryOtp} />
+      <ProofDrawer
+        stop={openStop}
+        onClose={() => setOpenStop(null)}
+        onComplete={completeStop}
+        onResend={resendDeliveryOtp}
+        proximity={openStop ? proximityOf(openStop.id) : null}
+        onRefreshPosition={async () => {
+          const coords = await getCurrentCoords();
+          if (coords) setRiderPos(coords);
+        }}
+      />
 
       {previewTrip && (
         <TripPreview
@@ -978,28 +1130,5 @@ const toMapStops = (stops: Stop[], leg: RouteDest, completed: Set<string>) =>
       sequence: s.sequence ?? 0,
       is_completed: completed.has(s.id),
     }));
-
-/** Rider standing just outside the demo hub, so the map draws a real leg even
- *  on a desktop browser that has no (or refuses) geolocation. */
-const DEMO_RIDER = { latitude: 12.9318, longitude: 77.6206 };
-
-const getCurrentCoords = () => new Promise<{ latitude: number; longitude: number } | null>((resolve) => {
-  if (isDemoMode()) {
-    resolve(DEMO_RIDER);
-    return;
-  }
-  if (!navigator.geolocation) {
-    resolve(null);
-    return;
-  }
-  navigator.geolocation.getCurrentPosition(
-    (position) => resolve({
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-    }),
-    () => resolve(null),
-    { enableHighAccuracy: true, timeout: 5000, maximumAge: 60000 },
-  );
-});
 
 export default Index;

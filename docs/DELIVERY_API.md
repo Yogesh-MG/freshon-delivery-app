@@ -218,8 +218,11 @@ Assignment {
 `deliver/` is used by **both** flows — trip drop-offs call it with the stop's `assignment` id.
 `type` accepts only `"otp" | "photo"`; the app sends `"otp"` and uploads the photo separately,
 so the backend cannot currently tell that both proofs were captured.
-`cod_collected` is **not in the documented contract** — the app sends it, the backend must be
-taught to persist it.
+
+The app sends more than this table lists: `cod_collected`, `cod_amount`, `photo_captured`,
+`proof_url`, `exception_reason` and `accuracy_m` all cross the wire today and are all
+dropped server-side. Each is the client half of a fix — see **§ 7a Required server
+changes** (S1, S3, S5, S8) for what each is for and why it matters.
 
 > ⚠️ **Inferred from the TypeScript interface — never observed.** Field names, types and
 > nullability may all be wrong. Run the API capture (see top) to replace this with real JSON.
@@ -277,6 +280,12 @@ Confidence: **declared**.
 | GET | `/earnings/` | — | `EarningsStats` |
 | GET | `/earnings/history/?days=N` | — | `EarningsHistory` |
 | POST | `/proof/` | multipart `{ mission_id, photo }` | `{ url }` |
+
+`/proof/` is also sent `stop_id`, `captured_at`, `latitude`, `longitude`, `accuracy_m` and
+`capture_id` — provenance for the photo and an idempotency key for its retries, none of
+which the endpoint reads yet. See **§ 7a**, S4. The photo itself is downscaled to a
+1280 px long edge and encoded at quality 0.72 before upload (~150–250 KB, down from
+several MB), and carries a burned-in timestamp and coordinate stamp.
 
 ```ts
 EarningsStats  { earnings, goal, deliveries, distance, rating }
@@ -449,7 +458,156 @@ Confidence: **declared**. Note the money fields are **strings**, like `total_dis
 | POST | `/cash/drop/` | `{ amount }` | `CashDrop` |
 | GET | `/cash/drop/{id}/status/` | — | `CashDrop` |
 
-`src/lib/cashDropService.ts` exists but **no UI references it**. Dead code today.
+`src/lib/cashDropService.ts` exists but **no UI references it**. Dead code today, and it
+cannot stop being dead code until the rider's outstanding cash balance is exposed —
+see § "Required server changes", S6.
+
+---
+
+## 7a. Required server changes
+
+Everything below is **already sent or already relied on by the app**. Each one is the
+server half of a fix whose client half has shipped: the field crosses the wire today and
+is ignored. Ordered by consequence.
+
+Fields the app now sends that no endpoint reads yet:
+
+| Endpoint | New field | Type | Purpose |
+| --- | --- | --- | --- |
+| `deliver/` | `cod_amount` | number | how much cash was actually taken |
+| `deliver/` | `photo_captured` | bool | a doorstep photo exists for this stop |
+| `deliver/` | `proof_url` | string | the stored photo, linked to the delivery |
+| `deliver/` | `exception_reason` | enum\|null | `OTP_UNAVAILABLE` — closed without a code |
+| `deliver/` | `accuracy_m` | number | error radius of the rider's fix |
+| `/proof/` | `stop_id` | uuid | which door this photo is of |
+| `/proof/` | `captured_at` | ISO-8601 | when the shutter fired, not when it uploaded |
+| `/proof/` | `latitude`/`longitude`/`accuracy_m` | number | where it was taken |
+| `/proof/` | `capture_id` | string | idempotency key, stable across retries |
+
+---
+
+### S1 — `deliver/` must persist `cod_collected` and `cod_amount`
+
+**Change.** Store both against the delivery. `cod_collected` has been arriving for a
+while and is dropped; `cod_amount` is new.
+
+**Why.** This is a cash-handling hole, not a cosmetic one. A rider takes cash at the
+door, ticks the box, and nothing in the system records that they are now holding the
+customer's money. Nothing can be reconciled against a cash drop, no shortfall is ever
+detectable, and a dispute has no record on either side. A boolean alone would not fix it
+— "cash was taken" cannot be balanced against anything. The amount can.
+
+---
+
+### S2 — Stop payloads must carry `cod_amount`
+
+**Change.** Add `cod_amount` to the drop-off stop object on `/trips/active/`,
+`/trips/available/` and `/assignments/`. Three states, and they must be distinct:
+
+- a positive decimal → COD, this much is due
+- `null` → prepaid, nothing to collect
+- **field absent** → the app assumes this change hasn't shipped and falls back
+
+**Why.** The app has never known which orders are COD, so it showed "Cash on delivery
+collected" at *every* door — inviting a tick on prepaid orders — while giving the rider
+on a genuine COD order no idea how much to ask for. The client already handles all three
+states (`src/lib/cod.ts`); until the field appears it stays on the legacy tick.
+
+---
+
+### S3 — `deliver/` must return a stable `error_code`
+
+**Change.** Alongside the human-readable `error`, return a machine-readable code:
+
+```json
+{ "error": "You are too far from the delivery address", "error_code": "OUTSIDE_GEOFENCE" }
+```
+
+Suggested set: `INVALID_OTP`, `OTP_EXPIRED`, `OUTSIDE_GEOFENCE`, `ALREADY_DELIVERED`,
+`NOT_IN_TRANSIT`, `LOCATION_REQUIRED`.
+
+**Why.** These call for opposite responses from the rider — re-enter the code, walk
+closer, refresh the trip — and today they are indistinguishable prose. The app currently
+**pattern-matches the English message** (`src/lib/deliveryErrors.ts`) to decide whether
+to clear the OTP boxes. That works and it is a stopgap: it breaks the moment the wording
+changes or the API is localised.
+
+---
+
+### S4 — `/proof/` must accept provenance, and be idempotent
+
+**Change.** Accept and store `stop_id`, `captured_at`, `latitude`, `longitude`,
+`accuracy_m`, `capture_id`. Treat `capture_id` as an idempotency key: a repeat upload
+with a key already seen returns the existing row instead of creating a second.
+
+**Why, provenance.** A canvas capture carries no EXIF whatsoever — no timestamp, no GPS,
+no device. A proof photo with no when and no where settles no dispute; a rider could
+photograph a parcel in the van a kilometre from the address. The app now stamps both into
+the pixels *and* sends them as fields.
+
+**Why, idempotency.** The upload retries transient failures (a lift lobby eating one
+request used to fail an otherwise-complete delivery). A retry after a lost response would
+otherwise store the same doorstep twice.
+
+**Also.** Link the proof to the delivery. Today `/proof/` and `deliver/` are unrelated
+writes joined only by `mission_id` — with `stop_id` and `proof_url` (S1) the row can
+finally be attached to the stop it evidences.
+
+---
+
+### S5 — `deliver/` must record the no-code exception, and flag it
+
+**Change.** Accept `exception_reason: "OTP_UNAVAILABLE"` on a `type: "photo"` delivery,
+store it, and surface those deliveries in whatever operations queue reviews exceptions.
+
+**Why.** Until now a rider whose customer could not receive the code had **no way to
+complete the delivery at all** — phone off, wrong number on file, SMS never arrived. The
+parcel is handed over in the real world and the app cannot record it. The options left
+were abandoning the stop or faking something. The app now offers a photo-only path after
+two failed attempts, and it must be visibly distinct from a normal delivery — otherwise
+it becomes the easy route rather than the last one.
+
+---
+
+### S6 — Expose the rider's outstanding cash balance
+
+**Change.** Add the rider's uncollected COD total to `/wallet/` (or a dedicated
+`/cash/outstanding/`), and return it in the same shape as the wallet's other money
+fields.
+
+**Why.** `/cash/drop/` exists and `cashDropService.ts` implements it, but no UI can be
+built on top: the app has no way to show the rider how much cash they are holding or how
+much to hand in. Without S1 there is nothing to total, and without this endpoint there is
+nothing to display. Together they close the cash loop: collected at the door (S1) →
+totalled here → dropped at the hub (`/cash/drop/`).
+
+---
+
+### S7 — Rate-limit `resend-otp/`, and say so in the response
+
+**Change.** Enforce a server-side cooldown and cap. Return the state rather than a bare
+200:
+
+```json
+{ "sent": true, "cooldown_seconds": 45, "resends_remaining": 2 }
+```
+
+**Why.** The app now enforces a 45-second client-side cooldown, which is a courtesy, not
+a control — it is trivially bypassed by reloading. The cost of not having a real limit is
+the SMS bill and a gateway that starts refusing the send that would have worked. The
+returned values also let the app show the true remaining wait instead of guessing.
+
+---
+
+### S8 — Distinguish "both proofs captured" from "one proof captured"
+
+**Change.** Accept `photo_captured` (S1) and, ideally, widen `type` to include a value
+meaning both — e.g. `"otp_photo"`.
+
+**Why.** The UI enforces a two-step chain: photo, then OTP, both mandatory. The API's
+`type` field names exactly one proof, so the app sends `"otp"` and uploads the photo
+separately. The backend therefore **cannot verify that the policy it is relying on was
+followed** — every delivery looks like an OTP-only delivery.
 
 ---
 

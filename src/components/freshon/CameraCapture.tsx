@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Loader2, RotateCcw, X } from "lucide-react";
+import { Camera, Loader2, MapPin, RotateCcw, X } from "lucide-react";
 import { isDemoMode } from "@/lib/demo/demoMode";
+import { getCurrentCoords } from "@/lib/riderPosition";
+import {
+  buildProofStamp,
+  encodeProof,
+  finishFrame,
+  grabFrame,
+  proofFileName,
+  proofMetaFrom,
+  type ProofMeta,
+} from "@/lib/proofImage";
 
 /**
  * In-app camera for proof-of-delivery photos.
@@ -20,7 +30,8 @@ export const CameraCapture = ({
 }: {
   title?: string;
   hint?: string;
-  onCapture: (file: File) => void;
+  /** The encoded frame plus where and when it was taken. */
+  onCapture: (file: File, meta: ProofMeta) => void;
   onCancel: () => void;
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -28,7 +39,10 @@ export const CameraCapture = ({
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   // Held so the rider can judge the shot before it's committed.
-  const [preview, setPreview] = useState<{ file: File; url: string } | null>(null);
+  const [preview, setPreview] = useState<{ file: File; url: string; meta: ProofMeta } | null>(null);
+  // Between the shutter and the encoded file there is a GPS read and a resize.
+  // Short, but long enough that an unlabelled frozen screen reads as a crash.
+  const [processing, setProcessing] = useState(false);
   const demo = isDemoMode();
 
   const stop = useCallback(() => {
@@ -68,30 +82,39 @@ export const CameraCapture = ({
   // Revoke the object URL only once the preview is actually replaced/dropped.
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview.url); }, [preview]);
 
-  const shoot = () => {
+  /**
+   * Shutter. The frame is frozen synchronously and only then annotated: reading
+   * the GPS first would sample the scene up to five seconds after the rider
+   * tapped, which is a different photo than the one they framed.
+   */
+  const shoot = async () => {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext("2d")?.drawImage(video, 0, 0);
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          setError("Couldn't capture the frame — try again.");
-          return;
-        }
-        const file = new File([blob], `proof-${Date.now()}.jpg`, { type: "image/jpeg" });
-        stop();
-        setPreview({ file, url: URL.createObjectURL(file) });
-      },
-      "image/jpeg",
-      0.85,
-    );
+    if (!video || processing) return;
+
+    const frame = grabFrame(video);
+    if (!frame) {
+      setError("Couldn't capture the frame — try again.");
+      return;
+    }
+    // The pixels are safe on the canvas now, so the stream can be released
+    // while the fix is still coming in.
+    stop();
+    setProcessing(true);
+
+    const meta = proofMetaFrom(await getCurrentCoords());
+    const blob = await encodeProof(finishFrame(frame, meta));
+    setProcessing(false);
+
+    if (!blob) {
+      setError("Couldn't save the photo — try again.");
+      return;
+    }
+    const file = new File([blob], proofFileName(meta.capturedAt), { type: "image/jpeg" });
+    setPreview({ file, url: URL.createObjectURL(file), meta });
   };
 
   /** Demo mode usually runs on a machine with no usable rear camera. */
-  const shootDemo = () => {
+  const shootDemo = async () => {
     const canvas = document.createElement("canvas");
     canvas.width = 640;
     canvas.height = 480;
@@ -104,12 +127,14 @@ export const CameraCapture = ({
       ctx.textAlign = "center";
       ctx.fillText("DEMO PROOF PHOTO", 320, 250);
     }
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const file = new File([blob], "demo-proof.jpg", { type: "image/jpeg" });
-      stop();
-      setPreview({ file, url: URL.createObjectURL(file) });
-    }, "image/jpeg");
+    stop();
+    setProcessing(true);
+    const meta = proofMetaFrom(await getCurrentCoords());
+    const blob = await encodeProof(finishFrame(canvas, meta));
+    setProcessing(false);
+    if (!blob) return;
+    const file = new File([blob], proofFileName(meta.capturedAt), { type: "image/jpeg" });
+    setPreview({ file, url: URL.createObjectURL(file), meta });
   };
 
   const retake = () => {
@@ -136,8 +161,8 @@ export const CameraCapture = ({
           ) : (
             <>
               <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
-              {!ready && !error && (
-                <div className="absolute inset-0 grid place-items-center">
+              {(!ready || processing) && !error && (
+                <div className="absolute inset-0 grid place-items-center bg-black/40">
                   <Loader2 className="h-7 w-7 animate-spin text-accent" />
                 </div>
               )}
@@ -147,15 +172,29 @@ export const CameraCapture = ({
         </div>
 
         <div className="mt-4 text-center text-sm text-primary-foreground/80">
-          {preview ? "Clear enough? This is what the customer's proof will show." : hint}
+          {processing
+            ? "Stamping the time and place…"
+            : preview
+            ? "Clear enough? This is what the customer's proof will show."
+            : hint}
         </div>
+
+        {/* What was stamped into the frame, repeated in text so the rider can
+            see it landed without squinting at the thumbnail. */}
+        {preview && (
+          <div className="mt-2 flex max-w-xs items-center gap-1.5 text-center text-[11px] text-primary-foreground/70">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span>{buildProofStamp(preview.meta).join(" · ")}</span>
+          </div>
+        )}
+
         {error && <div className="mt-2 max-w-xs text-center text-sm text-accent-glow">{error}</div>}
 
         <div className="mt-6 w-full max-w-xs space-y-2">
           {preview ? (
             <>
               <button
-                onClick={() => onCapture(preview.file)}
+                onClick={() => onCapture(preview.file, preview.meta)}
                 className="w-full rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber"
               >
                 Use this photo
@@ -169,7 +208,7 @@ export const CameraCapture = ({
             </>
           ) : error ? (
             <button
-              onClick={demo ? shootDemo : () => void start()}
+              onClick={() => (demo ? void shootDemo() : void start())}
               className="w-full rounded-2xl bg-white/10 px-5 py-3.5 text-sm font-bold text-primary-foreground"
             >
               {demo ? "Use a demo photo" : "Try camera again"}
@@ -177,15 +216,15 @@ export const CameraCapture = ({
           ) : (
             <>
               <button
-                onClick={shoot}
-                disabled={!ready}
+                onClick={() => void shoot()}
+                disabled={!ready || processing}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50"
               >
-                <Camera className="h-4 w-4" /> Take photo
+                <Camera className="h-4 w-4" /> {processing ? "Saving…" : "Take photo"}
               </button>
               {demo && (
                 <button
-                  onClick={shootDemo}
+                  onClick={() => void shootDemo()}
                   className="w-full rounded-2xl bg-white/10 px-4 py-2.5 text-xs font-bold text-primary-foreground/80"
                 >
                   Simulate photo (demo)

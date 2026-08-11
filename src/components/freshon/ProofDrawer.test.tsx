@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { ProofDrawer } from "./ProofDrawer";
 import type { Stop } from "@/lib/types";
+import { PROOF_UNLOCK_RADIUS_M, type StopProximity } from "@/lib/stopProximity";
 
 vi.mock("@/lib/mapApps", () => ({ openInGoogleMaps: vi.fn() }));
 const dialPhone = vi.fn();
@@ -59,5 +60,68 @@ describe("ProofDrawer drop-off panel", () => {
     const { container } = draw(base);
     expect(screen.getByRole("button", { name: /start proof of delivery/i })).toBeInTheDocument();
     expect(container.querySelector('input[type="file"]')).toBeNull();
+  });
+});
+
+describe("ProofDrawer proximity gate", () => {
+  const drawWith = (proximity: StopProximity) =>
+    render(
+      <ProofDrawer stop={base} onClose={vi.fn()} onComplete={vi.fn()} proximity={proximity} />,
+    );
+
+  it("withholds the proof chain until the rider is near the drop", () => {
+    drawWith({
+      distanceM: 1240,
+      unlocked: false,
+      arrived: false,
+      radiusM: PROOF_UNLOCK_RADIUS_M,
+      awaitingFix: false,
+    });
+    expect(screen.queryByRole("button", { name: /start proof of delivery/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/proof unlocks near the drop/i)).toBeInTheDocument();
+    // The remaining distance is on screen, so the lock is never unexplained.
+    expect(screen.getByText("1.2 km")).toBeInTheDocument();
+  });
+
+  it("still lets the rider call and read the stop while it's locked", () => {
+    render(
+      <ProofDrawer
+        stop={{ ...base, customer_phone: "+91 98450 11234" }}
+        onClose={vi.fn()}
+        onComplete={vi.fn()}
+        proximity={{
+          distanceM: 900,
+          unlocked: false,
+          arrived: false,
+          radiusM: PROOF_UNLOCK_RADIUS_M,
+          awaitingFix: false,
+        }}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /call/i })).toBeInTheDocument();
+    expect(screen.getByText(/Gate code 4421/)).toBeInTheDocument();
+  });
+
+  it("blames the missing fix, not the rider, when GPS hasn't landed", () => {
+    drawWith({
+      distanceM: null,
+      unlocked: false,
+      arrived: false,
+      radiusM: PROOF_UNLOCK_RADIUS_M,
+      awaitingFix: true,
+    });
+    expect(screen.getByText(/waiting for your location/i)).toBeInTheDocument();
+  });
+
+  it("opens the chain once the rider is inside the radius", () => {
+    drawWith({
+      distanceM: 120,
+      unlocked: true,
+      arrived: true,
+      radiusM: PROOF_UNLOCK_RADIUS_M,
+      awaitingFix: false,
+    });
+    expect(screen.getByRole("button", { name: /start proof of delivery/i })).toBeInTheDocument();
+    expect(screen.getByText(/you've arrived/i)).toBeInTheDocument();
   });
 });

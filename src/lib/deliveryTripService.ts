@@ -29,6 +29,12 @@ export interface TripStop {
   weight_kg?: number | null;
   /** How many physical parcels make up this stop — a count, never the products. */
   parcel_count?: number;
+  /**
+   * Cash due at this door, in rupees. Not sent by the live payload yet; when it
+   * is, the drawer stops asking prepaid customers for cash and starts recording
+   * how much was actually taken. See `lib/cod.ts`.
+   */
+  cod_amount?: number | string | null;
   /** Per-item manifest. Not sent by the live trips payload; kept only for the
    *  demo backend's fixtures. */
   items?: { name: string; qty: number; unit: string; weight_grams: number | null; fragile?: boolean }[];

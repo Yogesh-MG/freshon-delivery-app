@@ -104,7 +104,8 @@ export const DemoBar = () => {
       </div>
 
       <p className="mt-1.5 text-[11px] leading-snug text-white/60">
-        Serves the whole rider flow from fake in-memory data. Bag QR and delivery OTP accept anything.
+        Serves the whole rider flow from fake in-memory data. Bag QR accepts anything, and so does
+        the delivery OTP — except 999999, which is refused so the wrong-code path can be walked.
       </p>
 
       <button

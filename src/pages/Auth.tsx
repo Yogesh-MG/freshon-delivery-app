@@ -25,6 +25,8 @@ import {
     Wallet,
 } from "lucide-react";
 import { Motorbike } from "./Onboarding";
+import { LOGIN_RESEND_COOLDOWN_S, loginOtpKey, useOtpSession } from "@/lib/otpSession";
+
 const phoneSchema = z.object({
     phone: z.string().trim().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian number").min(10).max(10),
 });
@@ -43,29 +45,50 @@ const Auth = () => {
     const [phone, setPhone] = useState("");
     const [otp, setOtp] = useState("");
 
+    // Keyed by number, and held outside this component, so the lock survives
+    // the rider backing out to the phone step and coming straight back.
+    const { remaining: cooldown, noteResend, clear: clearOtpSession } = useOtpSession(
+        phone.length === 10 ? loginOtpKey(phone) : null,
+    );
+
     useEffect(() => {
         if (!loading && user) {
             navigate(user.is_profile_complete ? "/" : "/onboarding", { replace: true });
         }
     }, [loading, user, navigate]);
 
-    const handleSendOtp = async (e: React.FormEvent) => {
-        e.preventDefault();
+    /**
+     * Sends the code, and doubles as the resend.
+     *
+     * There was no resend at all: a rider whose SMS never arrived had to tap
+     * "Change number", retype the number they already had, and submit again —
+     * which sent a second code with no cooldown of any kind between them.
+     */
+    const requestOtp = async (resent: boolean) => {
         const parsed = phoneSchema.safeParse({ phone });
         if (!parsed.success) {
             toast.error(parsed.error.issues[0].message);
             return;
         }
+        if (resent && cooldown > 0) return;
+
         setBusy(true);
         const result = await sendOtp(parsed.data.phone);
-        if (result.success) {
-            toast.success("OTP sent to your phone");
-            setOtp("");
-            setStep("otp");
-        } else {
-            toast.error(result.error || "Failed to send OTP");
-        }
         setBusy(false);
+
+        if (!result.success) {
+            toast.error(result.error || "Failed to send OTP");
+            return;
+        }
+        toast.success(resent ? "New code sent" : "OTP sent to your phone");
+        noteResend(LOGIN_RESEND_COOLDOWN_S);
+        setOtp("");
+        setStep("otp");
+    };
+
+    const handleSendOtp = (e: React.FormEvent) => {
+        e.preventDefault();
+        void requestOtp(false);
     };
 
     const handleVerifyOtp = async (code: string) => {
@@ -77,6 +100,8 @@ const Auth = () => {
         setBusy(true);
         const result = await verifyOtp(phone, parsed.data.otp);
         if (result.success) {
+            // Signed in — the code is spent, so its cooldown retires with it.
+            clearOtpSession();
             navigate(result.data?.is_profile_complete ? "/" : "/onboarding", { replace: true });
         } else {
             toast.error(result.error || "Invalid OTP");
@@ -160,6 +185,18 @@ const Auth = () => {
                                 {busy && <Loader2 className="h-4 w-4 animate-spin" />}
                                 Verify
                             </button>
+
+                            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                                <span>Didn't get the code?</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void requestOtp(true)}
+                                    disabled={busy || cooldown > 0}
+                                    className="font-bold text-primary transition hover:underline disabled:opacity-50 disabled:no-underline"
+                                >
+                                    {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend code"}
+                                </button>
+                            </div>
 
                             <button
                                 type="button"

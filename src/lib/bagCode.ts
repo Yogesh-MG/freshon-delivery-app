@@ -80,9 +80,19 @@ export interface ScannedBag {
   code: string;
 }
 
+export type BagRejection = "malformed" | "unknown" | "duplicate";
+
+/**
+ * `reason` is declared on the success arm too, as always-absent. The project
+ * compiles with `strict: false`, and without strictNullChecks TypeScript will
+ * not narrow a union by a boolean discriminant — so `if (!match.ok)` leaves
+ * `match` as the whole union and reading `match.reason` is an error. Declaring
+ * the key on both arms keeps the property addressable while still typing it as
+ * absent on a successful match.
+ */
 export type BagMatch =
-  | { ok: true; stop: TripStop; orderId: string; code: string }
-  | { ok: false; reason: "malformed" | "unknown" | "duplicate"; orderId: string | null };
+  | { ok: true; stop: TripStop; orderId: string; code: string; reason?: undefined }
+  | { ok: false; reason: BagRejection; orderId: string | null; stop?: undefined; code?: undefined };
 
 /**
  * Resolve a scanned code against the trip. The code alone decides which bag was

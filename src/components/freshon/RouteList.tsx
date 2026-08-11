@@ -1,17 +1,22 @@
 import { Assignment, Stop } from "@/lib/types";
 import { CheckCircle2, ChevronRight, GripVertical, MapPin, Package } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ProximityChip } from "./ProximityChip";
+import type { StopProximity } from "@/lib/stopProximity";
 
 export const RouteList = ({
   mission,
   completedStopIds,
   onOpenStop,
   onPickup,
+  proximityOf,
 }: {
   mission: Assignment;
   completedStopIds: Set<string>;
   onOpenStop: (s: Stop) => void;
   onPickup: (s: Stop) => void;
+  /** Proof gate per stop, so each row can say how far off it still is. */
+  proximityOf?: (stopId: string) => StopProximity;
 }) => {
   const [stops, setStops] = useState(mission.stops);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -54,18 +59,28 @@ export const RouteList = ({
               </div>
               {i < stops.length - 1 && <div className="mt-1 w-0.5 flex-1 bg-border" />}
             </div>
-            <button onClick={() => onOpenStop(s)} className="min-w-0 flex-1 text-left">
+            {/* A completed stop is inert. Reopening one walked the rider back
+                into the proof chain for a delivery already closed, which meant
+                a fresh photo uploaded before the backend refused the duplicate. */}
+            <button
+              onClick={() => !done && onOpenStop(s)}
+              disabled={done}
+              className="min-w-0 flex-1 text-left disabled:cursor-default"
+            >
               <div className="flex items-center gap-2">
                 <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider
                   ${isPickup ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"}`}>
                   {isPickup ? "Pickup" : "Drop"}
                 </span>
-                <span className="text-xs text-muted-foreground">ETA {s.eta}</span>
+                <span className="text-xs text-muted-foreground">
+                  {done ? "Completed" : `ETA ${s.eta}`}
+                </span>
               </div>
               <div className="mt-1 truncate text-sm font-bold text-foreground">{s.label}</div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="h-3 w-3" /> <span className="truncate">{s.address}</span>
               </div>
+              {!done && !isPickup && proximityOf && <ProximityChip proximity={proximityOf(s.id)} />}
             </button>
             <div className="flex flex-col items-center justify-between pr-1">
               <GripVertical className="h-4 w-4 text-muted-foreground/60" />

@@ -5,7 +5,9 @@ import type { ScannedBag } from "@/lib/bagCode";
 import { openInGoogleMaps } from "@/lib/mapApps";
 import { BagScanFlow } from "./BagScanFlow";
 import { DeliveryMap, MapStop } from "./DeliveryMap";
+import { ProximityChip } from "./ProximityChip";
 import { RouteToggle, RouteDest } from "./RouteToggle";
+import type { StopProximity } from "@/lib/stopProximity";
 
 export const TripView = ({
   trip,
@@ -15,10 +17,13 @@ export const TripView = ({
   onReoptimize,
   onCancel,
   onRefreshPosition,
+  proximityOf,
   busy,
 }: {
   trip: DeliveryTrip;
   rider: { latitude: number; longitude: number } | null;
+  /** Proof gate per stop, so each row can say how far off it still is. */
+  proximityOf?: (stopId: string) => StopProximity;
   /** Re-sample the rider's GPS. Called when the map destination is toggled so
    *  the drawn leg starts from where they are now, not where they were. */
   onRefreshPosition?: () => void;
@@ -220,6 +225,7 @@ export const TripView = ({
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" /> <span className="truncate">{s.address}</span>
                 </div>
+                {clickable && proximityOf && <ProximityChip proximity={proximityOf(s.id)} />}
               </div>
               {clickable && (
                 <div className="flex items-center pr-1 text-primary">
