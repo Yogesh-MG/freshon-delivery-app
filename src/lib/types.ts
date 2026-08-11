@@ -33,18 +33,6 @@ export interface Stop {
   weight_kg?: number | null;
   /** How many bags/lines to carry — a count, never the products. */
   parcel_count?: number;
-  /**
-   * Cash still to collect at this door, in rupees. Three distinct states, and
-   * the drawer treats them differently:
-   *
-   * - a positive amount → COD order, the rider must confirm the exact sum
-   * - `0` or `null`     → prepaid, the cash prompt is not shown at all
-   * - `undefined`       → the backend does not send the field yet, so nothing
-   *                       is known and the legacy "collected?" tick stands in
-   *
-   * Sent as a string by the wallet endpoints, so both shapes are accepted.
-   */
-  cod_amount?: number | string | null;
 }
 
 export interface Assignment {

@@ -9,9 +9,16 @@ shipped rider app**. Each change here is the server half of a fix whose client h
 done. Until you make these changes the fields cross the wire and are silently dropped, and
 the behaviours they enable stay broken.
 
-**How to read the priorities:** S1, S2 and S6 together close a live cash-handling hole and
-are the reason this document exists. S3 and S7 are correctness and abuse-control. S4, S5,
-S8, S10 are evidence integrity. S9 is login abuse-control.
+**How to read the priorities:** S1 and S7 fix cases where a rider is left stuck or
+misinformed by a response they cannot act on — start there. S2, S3 and S5 are evidence
+integrity: whether a delivery's proof can be trusted after the fact. S4 and S6 are
+abuse-control on the two OTP endpoints.
+
+**On cash on delivery:** an earlier draft of this document asked for COD persistence, a
+`cod_amount` on stop payloads, and a rider cash balance to reconcile against. **Those are
+withdrawn.** The rider app no longer collects cash — it sends no COD fields at all, so
+there is nothing for the server to record. If COD returns to the app, that work returns
+with it; do not build it speculatively.
 
 ---
 
@@ -34,7 +41,7 @@ Concretely: `deliver/` must still succeed for a request body of exactly
 
 ### 0.2 Do not trust the client
 
-Several new fields are client-asserted (`cod_amount`, `captured_at`, `latitude`,
+Several new fields are client-asserted (`captured_at`, `latitude`, `accuracy_m`,
 `photo_captured`). They are useful, and they are also exactly what a rider would
 manipulate to close a stop they are not at. Each section below says what to validate
 against server-side truth. **Where the client's value and the server's disagree, the
@@ -62,7 +69,7 @@ endpoint, not the recipient, not the storage, not the lifetime.
 | Issued when | rider taps Continue on the login screen | at pickup, automatically |
 | Verified by | `verify-otp/`, returns a device key | `deliver/`, with `type: "otp"` and `otp_code` |
 | Who types it in | the rider, reading their own SMS | the rider, reading it aloud from the customer |
-| Covered by | **S9** | **S7** |
+| Covered by | **S6** | **S2** |
 
 `resend-otp/` under `/assignments/{id}/` is the **customer's** code. It resends the
 handover code for that delivery. It has nothing to do with logging in.
@@ -86,8 +93,6 @@ Quick lookup. Details and validation rules are in the per-change sections.
 | `type` | `"otp"` \| `"photo"` | existing | `"photo"` now means the exception path |
 | `otp_code` | string(6) | existing | absent on the exception path |
 | `latitude` / `longitude` | float | existing | may be absent if the stop has no coords |
-| `cod_collected` | bool | **sent, dropped** | always present, explicitly `false` |
-| `cod_amount` | number | **new** | present only when the stop declared an amount |
 | `photo_captured` | bool | **new** | |
 | `proof_url` | string | **new** | the URL `/proof/` returned |
 | `exception_reason` | `"OTP_UNAVAILABLE"` | **new** | present only on the exception path |
@@ -107,110 +112,7 @@ Quick lookup. Details and validation rules are in the per-change sections.
 
 ---
 
-## S1 — `deliver/` must persist `cod_collected` and `cod_amount`
-
-**Priority: highest. This is a live cash-handling hole.**
-
-### Current behaviour
-
-`cod_collected` arrives on every delivery and is discarded. `cod_amount` is new.
-
-### Why this matters
-
-A rider takes cash at the door and ticks a box. Nothing in the system records that they
-are now holding the customer's money. There is no figure to reconcile against a cash drop,
-no way to detect a shortfall, and nothing on either side of a dispute. A boolean alone
-would not fix it: "cash was taken" balances against nothing. The amount does.
-
-### Required
-
-Persist both against the delivery record:
-
-```
-delivery.cod_collected  = bool     # rider asserts cash changed hands
-delivery.cod_amount     = Decimal  # what the rider says they took
-delivery.cod_expected   = Decimal  # what the order actually says is due (server truth)
-```
-
-Then create the ledger entry that makes reconciliation possible — the rider's outstanding
-cash balance increases by `cod_expected` (**not** by the client's `cod_amount`), in the
-same transaction as the delivery.
-
-### Validation and edge cases
-
-| Case | Required behaviour |
-| --- | --- |
-| Order is prepaid, `cod_collected: true` | Reject, `400`, `error_code: "COD_NOT_DUE"`. Nothing was owed; something is wrong. |
-| Order has COD due, `cod_collected: false`, no `exception_reason` | Reject, `400`, `error_code: "COD_NOT_COLLECTED"`. The parcel must not leave without the cash. |
-| Order has COD due, `cod_collected: false`, **with** `exception_reason` | Accept, flag for review. Handled separately from a normal delivery. |
-| `cod_amount` ≠ `cod_expected` | Reject, `400`, `error_code: "COD_AMOUNT_MISMATCH"`, and include `expected_amount` in the response. Silently accepting the wrong figure defeats the entire point. |
-| `cod_amount` absent, order has COD due | Accept (old client) — record `cod_expected` and flag the delivery as `cod_amount_unverified`. Do **not** reject; old clients cannot send it. |
-| `cod_amount` present, order is prepaid | Reject, `400`, `COD_NOT_DUE`. |
-| `cod_amount` ≤ 0 or non-numeric | Reject, `400`, validation error. |
-| Repeated delivery of the same stop | See **S10**. Must not double-credit the cash ledger. |
-
-Use `Decimal` throughout. Never float for money.
-
-### Acceptance tests
-
-1. COD order, correct amount, `cod_collected: true` → `200`, rider's outstanding balance
-   increases by exactly the order's COD due.
-2. Same request sent twice → balance increases **once**.
-3. COD order with `cod_amount` 100 less than due → `400 COD_AMOUNT_MISMATCH`.
-4. Prepaid order with `cod_collected: true` → `400 COD_NOT_DUE`.
-5. Old-client body (no `cod_amount`) on a COD order → `200`, delivery flagged unverified.
-6. Old-client body on a prepaid order → `200`, unchanged from today.
-
----
-
-## S2 — Stop payloads must carry `cod_amount`
-
-### Current behaviour
-
-No payment information reaches the rider at all. The app therefore showed a "Cash on
-delivery collected" tick at **every** door — inviting a tick on prepaid orders — while
-telling a rider on a genuine COD order nothing about how much to ask for.
-
-### Required
-
-Add `cod_amount` to every **drop-off** stop object returned by:
-
-- `GET /api/delivery-partner/trips/active/`
-- `GET /api/delivery-partner/trips/available/`
-- `GET /api/delivery-partner/assignments/`
-
-Three states, and they are **not** interchangeable:
-
-| Value | Meaning | What the app does |
-| --- | --- | --- |
-| `"640.00"` (positive) | COD, this much is due | Shows "Collect ₹640", blocks completion until confirmed |
-| `null` | prepaid, nothing to collect | Shows "Prepaid — no cash to collect", no tick at all |
-| **key absent** | this change has not shipped | Falls back to the legacy free-standing tick |
-
-**The distinction between `null` and absent is load-bearing.** Once you ship this, always
-include the key on drop-off stops — send `null`, never omit. Omitting it tells the app the
-backend does not support the field and it reverts to the old behaviour.
-
-Hub `pickup` stops do not need the field.
-
-### Format
-
-Send a **decimal string** (`"640.00"`), consistent with the wallet endpoints, which
-already send money as strings. The app parses both string and number, so either works —
-string is preferred for consistency.
-
-### Edge cases
-
-- **Partially prepaid orders.** Send the outstanding balance only, not the order total.
-- **COD amount changed after dispatch.** The value at read time is what the rider is shown
-  and what they will send back; S1's mismatch check compares against the value at delivery
-  time. If these can diverge, prefer rejecting with `COD_AMOUNT_MISMATCH` and letting the
-  rider re-open the stop to see the new figure.
-- **Currency.** Rupees, matching everything else. Do not introduce a currency field.
-
----
-
-## S3 — `deliver/` must return a machine-readable `error_code`
+## S1 — `deliver/` must return a machine-readable `error_code`
 
 ### Current behaviour
 
@@ -246,17 +148,16 @@ Keep `error` exactly as it is (old clients show it). **Add** `error_code`:
 | `OTP_ATTEMPTS_EXCEEDED` | 429 | too many wrong codes for this stop |
 | `OUTSIDE_GEOFENCE` | 400 | rider too far from the drop; include `distance_m` |
 | `LOCATION_REQUIRED` | 400 | no coordinates supplied and the stop is geofenced |
-| `ALREADY_DELIVERED` | 409 | see S10 — usually should not be reached |
+| `ALREADY_DELIVERED` | 409 | see S2 — usually should not be reached |
 | `NOT_IN_TRANSIT` | 409 | assignment is in the wrong state |
-| `COD_NOT_DUE` / `COD_NOT_COLLECTED` / `COD_AMOUNT_MISMATCH` | 400 | see S1 |
-| `PROOF_REQUIRED` | 400 | see S8 |
+| `PROOF_REQUIRED` | 400 | see S1 |
 
 Apply the same `error_code` convention to `pickup/`, `transit/` and `resend-otp/` while
 you are in there. It costs little and the client already has the plumbing.
 
 ---
 
-## S4 — `/proof/` must accept provenance, and be idempotent
+## S2 — `/proof/` must accept provenance, and be idempotent
 
 ### Current behaviour
 
@@ -320,7 +221,7 @@ Today `/proof/` and `deliver/` are unrelated writes joined only by `mission_id`.
 
 ---
 
-## S5 — Record and flag the no-code exception
+## S1 — Record and flag the no-code exception
 
 ### Current behaviour
 
@@ -354,7 +255,6 @@ or it becomes the easy route rather than the last one.
 | `type: "photo"` with **no** `exception_reason` (old client) | Accept, as today. Do not retroactively flag old clients' deliveries. |
 | Unknown `exception_reason` value | Reject, `400`. Do not store free text. |
 | **Geofence on the exception path** | **Still enforced.** The exception is about the customer's phone, not about where the rider is. Do not let it bypass the location check. |
-| COD on the exception path | Cash still reconciles per S1. Flag prominently: cash taken with no customer confirmation is the highest-risk combination in the system. |
 
 ### Rate
 
@@ -363,54 +263,7 @@ is the signal this flag exists to produce.
 
 ---
 
-## S6 — Expose the rider's outstanding cash balance
-
-### Current behaviour
-
-`POST /api/delivery-partner/cash/drop/` and `GET /cash/drop/{id}/status/` both exist and
-are implemented client-side in `cashDropService.ts` — **but no screen can use them.** The
-app has no way to show a rider how much cash they hold or how much to hand in, so there is
-nothing to build a cash-drop UI around.
-
-### Required
-
-Add the rider's uncollected COD total, either to the existing `GET /wallet/` response or
-as a dedicated endpoint:
-
-```json
-// GET /api/delivery-partner/cash/outstanding/
-{
-  "outstanding": "2340.00",
-  "collected_total": "5840.00",
-  "dropped_total": "3500.00",
-  "last_drop_at": "2026-08-11T14:20:00Z",
-  "deliveries": [
-    { "order_id": "FRSH-2FC946", "amount": "640.00", "delivered_at": "2026-08-11T09:15:00Z" }
-  ]
-}
-```
-
-Definition: `outstanding = Σ(cod collected, per S1) − Σ(cash drops acknowledged)`.
-
-Only count deliveries where `cod_collected` is true **and** the delivery is not reversed.
-Amounts as decimal strings, consistent with the wallet.
-
-### Why
-
-This is what unblocks the cash-drop UI and closes the loop:
-**collected at the door (S1) → totalled here (S6) → dropped at the hub (`/cash/drop/`)**.
-Without S1 there is nothing to total; without S6 there is nothing to display. Neither
-endpoint is useful alone.
-
-### Edge cases
-
-- A drop in `PENDING` (not yet acknowledged by the hub) must **not** reduce `outstanding`.
-  A rejected or expired drop must not either.
-- A reversed or cancelled delivery must reduce `collected_total`.
-
----
-
-## S7 — Rate-limit `resend-otp/` (the customer's code) and report the limit
+## S2 — Rate-limit `resend-otp/` (the customer's code) and report the limit
 
 ### Current behaviour
 
@@ -450,13 +303,13 @@ These are currently undocumented and the app has to guess:
 | --- | --- |
 | Does a resend invalidate the previous code? | **Yes.** One active code per stop. Two valid codes doubles the guessing surface and confuses a customer reading out the older SMS. |
 | Expiry | 15–30 minutes. Long enough for a slow stairwell, short enough to matter. |
-| Wrong-code attempts before lockout | 5 per stop, then `OTP_ATTEMPTS_EXCEEDED` (429). The app surfaces this and offers the S5 exception path. |
+| Wrong-code attempts before lockout | 5 per stop, then `OTP_ATTEMPTS_EXCEEDED` (429). The app surfaces this and offers the S1 exception path. |
 | Storage | Hashed, not plaintext. Compare in constant time. |
 | Single use | Yes — a code that completed a delivery must not verify again. |
 
 ---
 
-## S8 — Distinguish "both proofs captured" from "one"
+## S1 — Distinguish "both proofs captured" from "one"
 
 ### Current behaviour
 
@@ -469,7 +322,7 @@ followed.** Every delivery looks OTP-only.
 
 - Accept `photo_captured: bool` on `deliver/` and store it.
 - When `photo_captured` is true, verify a proof row actually exists for that stop
-  (via S4's `stop_id`). If not, reject with `PROOF_REQUIRED` — the claim is false.
+  (via S2's `stop_id`). If not, reject with `PROOF_REQUIRED` — the claim is false.
 - Optionally widen `type` to accept `"otp_photo"`. If you do, **keep accepting `"otp"` and
   `"photo"` unchanged** — old clients only send those.
 
@@ -478,9 +331,9 @@ for the first time.
 
 ---
 
-## S9 — Rate-limit the rider **login** OTP
+## S6 — Rate-limit the rider **login** OTP
 
-This one is about `/api/auth/send-otp/` — the rider's own code. Separate system from S7;
+This one is about `/api/auth/send-otp/` — the rider's own code. Separate system from S2;
 see §1.
 
 ### Current behaviour
@@ -497,7 +350,7 @@ sent a second code with nothing between them. The app now has a proper resend wi
 - Extend the response additively:
   `{ "phone": "+91…", "message": "OTP sent", "cooldown_seconds": 30, "resends_remaining": 4 }`
 - `429` + `Retry-After` on refusal.
-- Same lifecycle rules as S7: resend invalidates the previous code, hashed storage,
+- Same lifecycle rules as S2: resend invalidates the previous code, hashed storage,
   constant-time compare, single use, capped verify attempts.
 
 ### Enumeration
@@ -508,7 +361,7 @@ not the number belongs to a registered rider — otherwise the endpoint is a fre
 
 ---
 
-## S10 — Make `deliver/` idempotent
+## S2 — Make `deliver/` idempotent
 
 ### Current behaviour
 
@@ -532,8 +385,9 @@ happened", not as a conflict.
 Reserve the `ALREADY_DELIVERED` / `409` case for a genuinely different actor or a
 materially different payload (different OTP, different exception reason).
 
-**Critically:** the cash ledger entry from S1 must be created **once**. Idempotency here
-is what stops a retry from double-crediting a rider's outstanding balance.
+**Critically:** whatever side effects a delivery has — earnings credited, the trip
+advanced, the customer notified — must happen **once**. Idempotency here is what stops a
+retry from paying a rider twice for one drop.
 
 ---
 
@@ -541,20 +395,17 @@ is what stops a retry from double-crediting a rider's outstanding balance.
 
 Each step is independently deployable and safe on its own.
 
-| # | Change | Unblocks |
+| # | Change | Why here |
 | --- | --- | --- |
-| 1 | **S3** error codes | Retires the client's English pattern-matching. Zero risk, additive. |
-| 2 | **S10** idempotent deliver | Fixes a live "stuck rider" case. |
-| 3 | **S4** proof provenance + idempotency | Makes the client's upload retries safe. |
-| 4 | **S1** COD persistence + ledger | Closes the cash hole. |
-| 5 | **S2** `cod_amount` on stops | Turns on the correct COD UI. **Deploy after S1** — the app will start sending amounts as soon as it sees this field. |
-| 6 | **S6** outstanding balance | Unblocks the cash-drop screen. |
-| 7 | **S7** + **S9** rate limits | Abuse control. |
-| 8 | **S5** exception flagging, **S8** proof verification | Evidence integrity. |
+| 1 | **S1** error codes | Retires the client's English pattern-matching. Zero risk, purely additive. |
+| 2 | **S7** idempotent deliver | Fixes a live "stuck rider" case: the delivery recorded, the rider shown a failure. |
+| 3 | **S2** proof provenance + idempotency | Makes the client's upload retries safe, and gives a proof photo a when and a where. |
+| 4 | **S4** + **S6** rate limits | Abuse control on both OTP endpoints. Independent of everything above. |
+| 5 | **S3** exception flagging | Needs S2's `stop_id` to check a proof exists. |
+| 6 | **S5** proof verification | Needs S2 and S3 in place to be meaningful. |
 
-**S2 must not ship before S1.** Shipping S2 alone means riders start confirming exact
-amounts that the server then throws away — worse than today, because the rider now
-believes the figure was recorded.
+S1 first is deliberate: until `error_code` exists, the app is reading your English error
+strings to decide how to react. Every step after it is safer once that is gone.
 
 ---
 
@@ -564,7 +415,7 @@ believes the figure was recorded.
   new fields, and behave as it does today.
 - `/proof/` must keep accepting `{mission_id, photo}` alone.
 - `type` must keep accepting `"otp"` and `"photo"`.
-- Existing `error` strings should stay stable until `error_code` (S3) is deployed and the
+- Existing `error` strings should stay stable until `error_code` (S1) is deployed and the
   client's fallback matcher is removed — the app currently reads them.
 - The 300 m delivery geofence stays. The app added its own 400 m gate in front of it as a
   courtesy, so riders stop discovering the refusal *after* taking a photo and asking for a
@@ -576,18 +427,24 @@ believes the figure was recorded.
 ## 5. Verification
 
 A Bruno collection covering every endpoint lives in `bruno/` in the app repo. The relevant
-requests are `15`–`18` (assignment pickup / transit / deliver / resend-otp), `21` (upload
-proof) and `30`–`31` (cash drop). Point `baseUrl` at your environment and set `deviceKey`
-from request `2`.
+requests are `15`–`18` (assignment pickup / transit / deliver / resend-otp) and `21`
+(upload proof). Point `baseUrl` at your environment, set `deviceKey` from request `2`, and
+fill the rest into your own environment — the committed collection carries no credentials.
 
-Per-change acceptance tests are listed inline above; S1 has the fullest set and is the one
-worth writing first.
+Per-change acceptance tests are listed inline above; S2 has the fullest set.
 
-### End-to-end check once S1–S6 are in
+### End-to-end check once S1–S3 and S7 are in
 
-1. Dispatch a trip with one COD drop (₹640) and one prepaid drop.
-2. Rider app shows "Collect ₹640" on the first and "Prepaid" on the second.
-3. Complete the COD stop → outstanding balance reads ₹640.
-4. Replay the same `deliver/` request → still ₹640, not ₹1280.
-5. Complete the prepaid stop → balance unchanged.
-6. Create a cash drop for ₹640, acknowledge it at the hub → outstanding reads ₹0.
+1. Dispatch a trip with two drops. Pick up at the hub.
+2. At the first drop, submit `deliver/` with a wrong code → `400`,
+   `error_code: "INVALID_OTP"`. The app clears the boxes and asks again.
+3. Submit from outside the geofence → `400`, `error_code: "OUTSIDE_GEOFENCE"` with
+   `distance_m`. The app leaves the typed code alone and tells the rider to walk closer.
+4. Upload a proof photo twice with the same `capture_id` → one stored row, `200` both
+   times, second carrying `duplicate: true`.
+5. Complete the stop correctly → `200`, proof row linked to the stop.
+6. Replay that exact `deliver/` request → `200` with the original result, **not** a
+   `409`. This is the lost-response case from S7.
+7. At the second drop, exhaust the code attempts, then complete via the exception path →
+   `200`, delivery stored with `exception_reason: "OTP_UNAVAILABLE"` and flagged for
+   review. Confirm the geofence was still enforced on that path.

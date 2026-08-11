@@ -345,7 +345,6 @@ const Index = () => {
       order_id: tripStop.order_id,
       weight_kg: tripStop.weight_kg,
       parcel_count: tripStop.parcel_count,
-      cod_amount: tripStop.cod_amount,
     });
   };
 
@@ -613,8 +612,6 @@ const Index = () => {
       latitude: coords?.latitude,
       longitude: coords?.longitude,
       accuracyM: coords?.accuracy,
-      codCollected: proof.codCollected,
-      codAmount: proof.codAmount,
       photoCaptured: !!proof.photo,
       proofUrl,
       exceptionReason: proof.exceptionReason,

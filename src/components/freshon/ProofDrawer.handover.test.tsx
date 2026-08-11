@@ -117,6 +117,23 @@ describe("OTP entry", () => {
     expect((otpBoxes()[2] as HTMLInputElement).value).toBe("9");
   });
 
+  it("never asks the rider about cash", async () => {
+    // Cash on delivery was removed from the app. The prompt used to appear at
+    // every door, including prepaid ones, and fed a flag the backend dropped.
+    await openOtpStep();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.queryByText(/cash/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/collect ₹/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/prepaid/i)).not.toBeInTheDocument();
+  });
+
+  it("completes on the code alone, with nothing else to confirm", async () => {
+    await openOtpStep();
+    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeDisabled();
+    typeOtp("483921");
+    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeEnabled();
+  });
+
   it("sends the code with the photo that was captured for it", async () => {
     await openOtpStep();
     typeOtp("483921");
@@ -217,45 +234,6 @@ describe("resending the code", () => {
     await openOtpStep();
 
     expect(await screen.findByRole("button", { name: /resend in \d+s/i })).toBeDisabled();
-  });
-});
-
-describe("cash on delivery", () => {
-  it("names the amount to collect and blocks completion until it's confirmed", async () => {
-    await openOtpStep({ ...base, cod_amount: 640 });
-    typeOtp("483921");
-
-    expect(screen.getByText(/collect ₹640/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeDisabled();
-
-    fireEvent.click(screen.getByRole("checkbox"));
-    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeEnabled();
-  });
-
-  it("reports how much was taken, not just that cash changed hands", async () => {
-    await openOtpStep({ ...base, cod_amount: "640.00" });
-    typeOtp("483921");
-    fireEvent.click(screen.getByRole("checkbox"));
-    submit();
-
-    await waitFor(() => expect(onComplete).toHaveBeenCalled());
-    expect(lastSubmission()).toMatchObject({ codCollected: true, codAmount: 640 });
-  });
-
-  it("never asks a prepaid customer for cash", async () => {
-    // The tick used to appear on every door, including the ones with nothing due.
-    await openOtpStep({ ...base, cod_amount: null });
-    expect(screen.getByText(/prepaid/i)).toBeInTheDocument();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-  });
-
-  it("keeps the old tick where the backend doesn't send the field yet", async () => {
-    // Dropping it outright would take away the rider's only way to record cash.
-    await openOtpStep(base);
-    expect(screen.getByText(/cash on delivery collected/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeDisabled();
-    typeOtp("483921");
-    expect(screen.getByRole("button", { name: /verify & complete/i })).toBeEnabled();
   });
 });
 

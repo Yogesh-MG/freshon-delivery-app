@@ -1,7 +1,7 @@
 import { Stop } from "@/lib/types";
 import { openInGoogleMaps } from "@/lib/mapApps";
 import { dialPhone } from "@/lib/contact";
-import { AlertTriangle, Camera, CheckCircle2, KeyRound, Loader2, LocateFixed, Lock, MapPin, Navigation, Phone, ScanLine, Wallet, X } from "lucide-react";
+import { AlertTriangle, Camera, CheckCircle2, KeyRound, Loader2, LocateFixed, Lock, MapPin, Navigation, Phone, ScanLine, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { CameraCapture } from "./CameraCapture";
 import {
@@ -12,7 +12,6 @@ import {
 import type { ProofMeta } from "@/lib/proofImage";
 import type { DeliveryException } from "@/lib/deliveryAssignmentService";
 import { classifyDeliveryError, deliveryFailureHint, type DeliveryFailure } from "@/lib/deliveryErrors";
-import { formatRupees, hasCodField, parseCodAmount } from "@/lib/cod";
 import { DELIVERY_RESEND_COOLDOWN_S, deliveryOtpKey, useOtpSession } from "@/lib/otpSession";
 
 /**
@@ -29,9 +28,6 @@ export interface ProofSubmission {
   photo?: File;
   /** When and where the photo was taken, for the upload's provenance fields. */
   photoMeta?: ProofMeta;
-  codCollected?: boolean;
-  /** The amount the rider was asked to collect, when the stop declared one. */
-  codAmount?: number | null;
   /** Set only on the no-code path, saying why the OTP was not used. */
   exceptionReason?: DeliveryException | null;
 }
@@ -233,7 +229,6 @@ export const ProofDrawer = ({
 }) => {
   const [mode, setMode] = useState<Mode>("details");
   const [otp, setOtp] = useState(EMPTY_OTP);
-  const [cod, setCod] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resending, setResending] = useState(false);
   // Held with its preview URL so step 2 can show what was actually captured,
@@ -276,7 +271,6 @@ export const ProofDrawer = ({
   const resetForStop = () => {
     setMode("details");
     setOtp(EMPTY_OTP);
-    setCod(false);
     setFailure(null);
     setExceptionArmed(false);
     replacePhoto(null);
@@ -336,12 +330,6 @@ export const ProofDrawer = ({
   };
 
   const otpFilled = otp.every((d) => d !== "");
-
-  /** Cash due at this door, and whether the backend told us anything at all. */
-  const codDue = parseCodAmount(stop?.cod_amount);
-  const codKnown = hasCodField(stop?.cod_amount);
-  /** A declared amount has to be acknowledged before the stop can be closed. */
-  const codBlocking = codDue != null && !cod;
 
   /**
    * The no-code fallback. Withheld until the rider has actually tried, because
@@ -572,63 +560,20 @@ export const ProofDrawer = ({
                 </div>
               )}
 
-              {/* Three states, and they are not interchangeable: a known amount
-                  is collected and confirmed, a known-prepaid stop shows nothing
-                  at all, and a backend that doesn't send the field yet keeps
-                  the old free-standing tick. */}
-              {codDue != null ? (
-                <label
-                  className={`flex items-center justify-between gap-3 rounded-2xl px-4 py-3 text-sm ring-1 transition ${
-                    cod ? "bg-primary-soft ring-primary/40" : "bg-accent/10 ring-accent/40"
-                  }`}
-                >
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2 font-bold text-foreground">
-                      <Wallet className="h-4 w-4 text-accent" /> Collect {formatRupees(codDue)}
-                    </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {cod ? "Confirmed — this is recorded against your cash balance" : "Tick once the cash is in hand"}
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={cod}
-                    onChange={(e) => setCod(e.target.checked)}
-                    className="h-5 w-5 shrink-0 accent-[hsl(var(--primary))]"
-                  />
-                </label>
-              ) : codKnown ? (
-                <div className="rounded-2xl bg-muted/60 px-4 py-2.5 text-center text-xs font-semibold text-muted-foreground">
-                  Prepaid — no cash to collect
-                </div>
-              ) : (
-                <label className="flex items-center justify-between rounded-2xl bg-muted/60 px-4 py-3 text-sm">
-                  <span className="flex items-center gap-2 font-semibold text-foreground"><Wallet className="h-4 w-4 text-primary" /> Cash on delivery collected</span>
-                  <input type="checkbox" checked={cod} onChange={(e) => setCod(e.target.checked)} className="h-5 w-5 accent-[hsl(var(--primary))]" />
-                </label>
-              )}
-
               <button
-                disabled={!otpFilled || busy || codBlocking}
+                disabled={!otpFilled || busy}
                 onClick={() =>
                   finish({
                     type: "otp",
                     otpCode: otp.join(""),
                     photo: photo?.file,
                     photoMeta: photo?.meta,
-                    codCollected: cod,
-                    codAmount: codDue,
                   })
                 }
                 className="w-full rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition disabled:opacity-50"
               >
                 {busy ? "Verifying…" : "Verify & Complete"}
               </button>
-              {codBlocking && (
-                <div className="-mt-2 text-center text-xs text-muted-foreground">
-                  Confirm the {formatRupees(codDue!)} before completing.
-                </div>
-              )}
               {onResend && (
                 <div className="flex items-center justify-center gap-3 text-xs text-muted-foreground">
                   <span>Customer didn't get the code?</span>
@@ -676,14 +621,12 @@ export const ProofDrawer = ({
                         </button>
                         <button
                           type="button"
-                          disabled={busy || codBlocking}
+                          disabled={busy}
                           onClick={() =>
                             finish({
                               type: "photo",
                               photo: photo?.file,
                               photoMeta: photo?.meta,
-                              codCollected: cod,
-                              codAmount: codDue,
                               exceptionReason: "OTP_UNAVAILABLE",
                             })
                           }

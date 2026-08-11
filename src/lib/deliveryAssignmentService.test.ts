@@ -13,36 +13,28 @@ describe("markDelivered", () => {
     post.mockResolvedValue({ status: 200, data: {} });
   });
 
-  it("sends the cash-on-delivery flag the rider ticked", async () => {
+  it("posts the stop, the proof type and the code to the assignment's deliver route", async () => {
     await DeliveryAssignmentService.markDelivered("a1", {
       stopId: "s1",
       type: "otp",
       otpCode: "123456",
       latitude: 12.9,
       longitude: 77.6,
-      codCollected: true,
     });
     expect(post).toHaveBeenCalledWith(
       "/api/delivery-partner/assignments/a1/deliver/",
-      expect.objectContaining({ stop_id: "s1", type: "otp", otp_code: "123456", cod_collected: true }),
+      expect.objectContaining({ stop_id: "s1", type: "otp", otp_code: "123456" }),
     );
   });
 
-  it("sends an explicit false rather than omitting it", async () => {
-    await DeliveryAssignmentService.markDelivered("a1", { stopId: "s1", type: "otp", otpCode: "123456" });
-    expect(body()).toMatchObject({ cod_collected: false });
-  });
-
-  it("sends the amount collected, not just that cash changed hands", async () => {
-    // A boolean can't be reconciled against a cash drop; the amount can.
+  it("says nothing about cash — the app no longer collects it", async () => {
     await DeliveryAssignmentService.markDelivered("a1", {
       stopId: "s1",
       type: "otp",
       otpCode: "123456",
-      codCollected: true,
-      codAmount: 640,
     });
-    expect(body()).toMatchObject({ cod_collected: true, cod_amount: 640 });
+    expect(body()).not.toHaveProperty("cod_collected");
+    expect(body()).not.toHaveProperty("cod_amount");
   });
 
   it("declares that a photo was captured, which `type` alone cannot say", async () => {
@@ -68,7 +60,6 @@ describe("markDelivered", () => {
 
   it("omits the fields it knows nothing about instead of sending nulls", async () => {
     await DeliveryAssignmentService.markDelivered("a1", { stopId: "s1", type: "otp", otpCode: "123456" });
-    expect(body()).not.toHaveProperty("cod_amount");
     expect(body()).not.toHaveProperty("exception_reason");
     expect(body()).not.toHaveProperty("proof_url");
     expect(body()).not.toHaveProperty("accuracy_m");

@@ -41,8 +41,6 @@ interface DropSeed {
     lng: number;
     eta: string;
     notes?: string;
-    /** Cash due at this door. Omitted on the prepaid drops, which is most of them. */
-    cod?: number;
     items: { name: string; qty: number; unit: string; weight_grams: number | null; fragile?: boolean }[];
 }
 
@@ -80,9 +78,6 @@ const DROPS: DropSeed[] = [
         lat: 12.9121,
         lng: 77.6446,
         eta: "10:05 AM",
-        // The one cash order on the trip, so the demo shows both the "collect
-        // ₹X" prompt and the prepaid stops that no longer ask for cash at all.
-        cod: 640,
         items: [
             { name: "Baby Spinach", qty: 3, unit: "bunch", weight_grams: 250 },
             { name: "Cold-pressed Juice", qty: 2, unit: "bottle", weight_grams: 500, fragile: true },
@@ -160,10 +155,6 @@ const makeStops = (tripId: string, drops: DropSeed[]): TripStop[] => [
         order_id: `FRSH-${tripId.slice(-4).toUpperCase()}${i + 1}`,
         weight_kg: Math.round(d.items.reduce((sum, it) => sum + (it.weight_grams ?? 0) * it.qty, 0)) / 1000,
         parcel_count: d.items.reduce((sum, it) => sum + it.qty, 0),
-        // Explicit null, not undefined: the drawer reads an absent field as
-        // "this backend doesn't send it yet" and falls back to the old tick,
-        // whereas null is a positive statement that the order is prepaid.
-        cod_amount: d.cod ?? null,
         items: d.items,
     })),
 ];
