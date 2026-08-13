@@ -8,7 +8,7 @@ import { BottomNav } from "@/components/freshon/BottomNav";
 import { StatusToggle } from "@/components/freshon/StatusToggle";
 import { EarningsHeader } from "@/components/freshon/EarningsHeader";
 import { MissionCard } from "@/components/freshon/MissionCard";
-import { RadarWaiting } from "@/components/freshon/RadarWaiting";
+import { PoolEmpty } from "@/components/freshon/PoolEmpty";
 import { LoadMeter } from "@/components/freshon/LoadMeter";
 import { DeliveryMap } from "@/components/freshon/DeliveryMap";
 import { TripView } from "@/components/freshon/TripView";
@@ -142,6 +142,9 @@ const Index = () => {
   const [online, setOnline] = useState(false);
   // Covers the whole go-online sequence: permissions, GPS fix, status write, fetch.
   const [statusPending, setStatusPending] = useState(false);
+  // Readable from refreshDashboard without adding it to any dependency list.
+  const statusPendingRef = useRef(false);
+  statusPendingRef.current = statusPending;
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
   const [completedStopIds, setCompletedStopIds] = useState<Set<string>>(new Set());
@@ -239,13 +242,28 @@ const Index = () => {
   }, [hasActiveWork]);
 
   const refreshDashboard = async () => {
-    const [assignmentResult, earningsResult, tripResult, availableResult, kycResult] = await Promise.all([
+    const [assignmentResult, earningsResult, tripResult, availableResult, kycResult, profileResult] = await Promise.all([
       DeliveryAssignmentService.getAssignments(),
       DeliveryStatusService.getEarnings(),
       DeliveryTripService.getActiveTrip(),
       DeliveryTripService.getAvailableTrips(),
       DeliveryPartnerService.getKycDocuments(),
+      DeliveryPartnerService.getProfile(),
     ]);
+
+    /**
+     * The rider's online state lives on the server, and the app was never
+     * reading it — `online` started false on every launch. A rider who was
+     * online would open the app, be shown as offline, and the available-trip
+     * list is gated on this flag, so real dispatched trips were invisible until
+     * they toggled a switch they believed was already on.
+     *
+     * Skipped while a toggle is in flight, so a pull-to-refresh landing
+     * mid-request can't overwrite what the rider just chose.
+     */
+    if (profileResult.success && profileResult.data && !statusPendingRef.current) {
+      setOnline(profileResult.data.is_online === true);
+    }
 
     if (kycResult.success && kycResult.data) {
       const docs = kycResult.data.documents;
@@ -813,9 +831,9 @@ const Index = () => {
                   distanceOf={distanceOf}
                 />
               ) : (
-                // Offline, or online with an empty pool: just the radar, with a
-                // green contact per order waiting in the pool.
-                <RadarWaiting count={availableTrips.length} />
+                // Offline, or online with nothing in the pool. Says which, in
+                // words — the radar it replaced implied a search was running.
+                <PoolEmpty online={online} />
               )}
 
               {/* Load only means something while working — hidden when idle offline. */}
