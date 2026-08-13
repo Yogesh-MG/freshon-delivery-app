@@ -42,19 +42,36 @@ export interface Withdrawal {
 export class DeliveryWalletService {
   static async getWallet(): Promise<ApiResult<WalletSummary>> {
     const res = await apiClient.get<WalletSummary>("/api/delivery-partner/wallet/");
-    if (res.error) return { success: false, error: res.error };
+    if (res.error) return { success: false, error: res.error, errorCode: res.errorCode };
     return { success: true, data: res.data };
   }
 
-  static async requestWithdrawal(amount: number, method: WithdrawMethod): Promise<ApiResult<Withdrawal>> {
-    const res = await apiClient.post<Withdrawal>("/api/delivery-partner/wallet/withdraw/", { amount, method });
-    if (res.error) return { success: false, error: res.error };
+  /**
+   * Request a payout.
+   *
+   * `idempotencyKey` is what stops one tap becoming two payouts: the UI blocks
+   * double-taps, but a lost response is invisible to that guard — the rider
+   * asks for Rs 2,000, the reply dies in a lift, they tap again, and without a
+   * key that is Rs 4,000 out. Re-sending the same key returns the original
+   * withdrawal instead of debiting twice.
+   */
+  static async requestWithdrawal(
+    amount: number,
+    method: WithdrawMethod,
+    idempotencyKey?: string,
+  ): Promise<ApiResult<Withdrawal>> {
+    const res = await apiClient.post<Withdrawal>("/api/delivery-partner/wallet/withdraw/", {
+      amount,
+      method,
+      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+    });
+    if (res.error) return { success: false, error: res.error, errorCode: res.errorCode };
     return { success: true, data: res.data };
   }
 
   static async getWithdrawals(): Promise<ApiResult<Withdrawal[]>> {
     const res = await apiClient.get<Withdrawal[]>("/api/delivery-partner/wallet/withdrawals/");
-    if (res.error) return { success: false, error: res.error };
+    if (res.error) return { success: false, error: res.error, errorCode: res.errorCode };
     return { success: true, data: res.data };
   }
 }

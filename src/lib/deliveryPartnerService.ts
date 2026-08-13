@@ -89,7 +89,7 @@ export interface KycDocumentsResponse {
 export class DeliveryPartnerService {
   static async getProfile(): Promise<ApiResult<DeliveryPartnerProfile>> {
     const response = await apiClient.get<DeliveryPartnerProfile>("/api/delivery-partner/profile/");
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
@@ -113,20 +113,20 @@ export class DeliveryPartnerService {
     >
   ): Promise<ApiResult<DeliveryPartnerProfile>> {
     const response = await apiClient.patch<DeliveryPartnerProfile>("/api/delivery-partner/profile/", data);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
   static async getEarningsHistory(days = 30): Promise<ApiResult<EarningsHistory>> {
     const response = await apiClient.get<EarningsHistory>(`/api/delivery-partner/earnings/history/?days=${days}`);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
   // KYC Document APIs
   static async getKycDocuments(): Promise<ApiResult<KycDocumentsResponse>> {
     const response = await apiClient.get<KycDocumentsResponse>("/api/delivery-partner/documents/");
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
@@ -141,7 +141,7 @@ export class DeliveryPartnerService {
     formData.append("file", file);
 
     const response = await apiClient.post<KycDocumentsResponse>("/api/delivery-partner/documents/", formData);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 }

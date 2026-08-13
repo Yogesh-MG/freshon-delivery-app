@@ -22,7 +22,35 @@ const PATTERNS: [DeliveryFailure, RegExp][] = [
   ["state", /already (?:delivered|completed)|not (?:picked up|in transit)|confirm .*pickup|invalid (?:state|status)/i],
 ];
 
-export function classifyDeliveryError(message?: string | null): DeliveryFailure {
+/**
+ * Server codes, which are authoritative. The prose matching below is only a
+ * fallback for deployments that predate them.
+ */
+const CODES: Record<string, DeliveryFailure> = {
+  INVALID_OTP: "otp",
+  OTP_EXPIRED: "otp",
+  OTP_ATTEMPTS_EXCEEDED: "otp",
+  OUTSIDE_GEOFENCE: "location",
+  LOCATION_REQUIRED: "location",
+  NETWORK_UNREACHABLE: "network",
+  NOT_IN_TRANSIT: "state",
+  ALREADY_DELIVERED: "state",
+  TRIP_TAKEN: "state",
+  NOT_FOUND: "state",
+  // A malformed request is the app's fault, not the rider's. It must never
+  // clear the code they typed or send them walking to a different spot.
+  VALIDATION_ERROR: "unknown",
+  INVALID_TYPE: "unknown",
+  STOP_MISMATCH: "unknown",
+  PROOF_REQUIRED: "unknown",
+  INVALID_EXCEPTION: "unknown",
+};
+
+export function classifyDeliveryError(
+  message?: string | null,
+  errorCode?: string | null,
+): DeliveryFailure {
+  if (errorCode && CODES[errorCode]) return CODES[errorCode];
   if (!message) return "unknown";
   for (const [failure, pattern] of PATTERNS) {
     if (pattern.test(message)) return failure;

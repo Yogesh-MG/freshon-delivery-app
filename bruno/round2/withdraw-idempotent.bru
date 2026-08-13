@@ -7,7 +7,7 @@ meta {
 post {
   url: {{baseUrl}}/api/delivery-partner/wallet/withdraw/
   body: json
-  auth: none
+  auth: inherit
 }
 
 headers {
@@ -22,6 +22,10 @@ body:json {
     "method": "UPI",
     "idempotency_key": "bruno-fixed-key-001"
   }
+}
+
+vars:pre-request {
+  baseUrl: https://api.freshon.in
 }
 
 assert {

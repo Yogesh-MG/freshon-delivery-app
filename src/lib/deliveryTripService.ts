@@ -123,7 +123,7 @@ const normalizeTrip = (trip: DeliveryTrip): DeliveryTrip => ({
 export class DeliveryTripService {
   static async getActiveTrip(): Promise<ApiResult<DeliveryTrip | null>> {
     const response = await apiClient.get<{ trip: DeliveryTrip | null }>("/api/delivery-partner/trips/active/");
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     const trip = response.data?.trip ?? null;
     logStopShape(trip, "trips/active");
     return { success: true, data: trip ? normalizeTrip(trip) : null };
@@ -131,7 +131,7 @@ export class DeliveryTripService {
 
   static async getAvailableTrips(): Promise<ApiResult<DeliveryTrip[]>> {
     const response = await apiClient.get<{ trips: DeliveryTrip[] }>("/api/delivery-partner/trips/available/");
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     const trips = response.data?.trips || [];
     logStopShape(trips[0] ?? null, "trips/available");
     return { success: true, data: trips.map(normalizeTrip) };
@@ -139,7 +139,7 @@ export class DeliveryTripService {
 
   static async acceptTrip(id: string): Promise<ApiResult<DeliveryTrip>> {
     const response = await apiClient.post<{ trip: DeliveryTrip }>(`/api/delivery-partner/trips/${id}/accept/`);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data?.trip ? normalizeTrip(response.data.trip) : undefined };
   }
 
@@ -154,19 +154,30 @@ export class DeliveryTripService {
       `/api/delivery-partner/trips/${id}/pickup/`,
       { trip_id: id, bags },
     );
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data?.trip ? normalizeTrip(response.data.trip) : undefined };
   }
 
-  static async cancelTrip(id: string): Promise<ApiResult<void>> {
-    const response = await apiClient.post(`/api/delivery-partner/trips/${id}/cancel/`);
-    if (response.error) return { success: false, error: response.error };
-    return { success: true };
+  /**
+   * Hand a trip back.
+   *
+   * The server now allows this from ACTIVE, not just before pickup — riders
+   * break down, and a trip that could not be released stayed welded to them and
+   * invisible to the pool. `reason` is optional and goes into the ops record.
+   * The response reports `returned_orders`, the count put back in the pool.
+   */
+  static async cancelTrip(id: string, reason?: string): Promise<ApiResult<{ returned_orders?: number }>> {
+    const response = await apiClient.post<{ returned_orders?: number }>(
+      `/api/delivery-partner/trips/${id}/cancel/`,
+      reason ? { reason } : undefined,
+    );
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
+    return { success: true, data: response.data };
   }
 
   static async reoptimize(id: string): Promise<ApiResult<DeliveryTrip>> {
     const response = await apiClient.post<{ trip: DeliveryTrip }>(`/api/delivery-partner/trips/${id}/reoptimize/`);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data?.trip ? normalizeTrip(response.data.trip) : undefined };
   }
 }

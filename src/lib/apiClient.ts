@@ -11,6 +11,14 @@ const safeParse = (body: string): unknown => {
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
+  /**
+   * Machine-readable failure from the server, e.g. "INVALID_OTP".
+   *
+   * Without this the app had to pattern-match the English in `error` to decide
+   * how to react — which broke the moment anyone reworded a message, and would
+   * break outright on localisation.
+   */
+  errorCode?: string;
   status: number;
 }
 
@@ -131,7 +139,11 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        return { status: response.status, error: data?.error || data?.detail || data?.message || "Request failed" };
+        return {
+          status: response.status,
+          error: data?.error || data?.detail || data?.message || "Request failed",
+          errorCode: typeof data?.error_code === "string" ? data.error_code : undefined,
+        };
       }
 
       return { status: response.status, data };
@@ -147,6 +159,7 @@ class ApiClient {
       return {
         status: 0,
         error: "Can't reach the server. Check your connection and try again.",
+        errorCode: "NETWORK_UNREACHABLE",
       };
     }
   }

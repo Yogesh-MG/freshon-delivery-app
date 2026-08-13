@@ -14,13 +14,13 @@ export interface CashDrop {
 export class CashDropService {
   static async create(amount: number): Promise<ApiResult<CashDrop>> {
     const response = await apiClient.post<CashDrop>("/api/delivery-partner/cash/drop/", { amount });
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
   static async getStatus(dropId: string): Promise<ApiResult<CashDrop>> {
     const response = await apiClient.get<CashDrop>(`/api/delivery-partner/cash/drop/${dropId}/status/`);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 }

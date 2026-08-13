@@ -510,6 +510,14 @@ const Index = () => {
     }
     const result = await DeliveryAssignmentService.acceptAssignment(mission.id);
     if (!result.success || !result.data) {
+      // Another rider got there first. Refreshing is the useful response —
+      // the mission is gone and the list should stop offering it.
+      if (result.errorCode === "TRIP_TAKEN") {
+        toast.error("Another rider took this one");
+        play("error");
+        refreshDashboard();
+        return;
+      }
       toast.error(result.error || "Unable to accept mission");
       play("error");
       return;
@@ -615,7 +623,7 @@ const Index = () => {
         });
         if (!upload.success) {
           const error = upload.error || "Photo upload failed";
-          return stopFailed(error, classifyDeliveryError(error));
+          return stopFailed(error, classifyDeliveryError(error, upload.errorCode));
         }
         proofUrl = upload.data?.url ?? null;
         uploadedProof.current.set(stop.id, { file: proof.photo, url: proofUrl });
@@ -633,7 +641,7 @@ const Index = () => {
       // `deliver/` instead of the real one from here.
       if (!transit.success) {
         const error = transit.error || "Couldn't start this delivery. Try again.";
-        return stopFailed(error, classifyDeliveryError(error));
+        return stopFailed(error, classifyDeliveryError(error, transit.errorCode));
       }
     }
 
@@ -650,7 +658,7 @@ const Index = () => {
     });
     if (!result.success) {
       const error = result.error || "Unable to complete stop";
-      return stopFailed(error, classifyDeliveryError(error));
+      return stopFailed(error, classifyDeliveryError(error, result.errorCode));
     }
 
     // Delivered — the cached upload has done its job and the stop will not be
@@ -678,10 +686,15 @@ const Index = () => {
     else toast.error(result.error || "Unable to resend OTP");
   };
 
-  const handleCancelTrip = async () => {
+  /**
+   * Hand the trip back. Allowed after pickup now that the server supports it —
+   * a rider who breaks down mid-route used to be stuck with orders nobody else
+   * could be given.
+   */
+  const handleCancelTrip = async (reason?: string) => {
     if (!trip) return;
     setTripBusy(true);
-    const result = await DeliveryTripService.cancelTrip(trip.id);
+    const result = await DeliveryTripService.cancelTrip(trip.id, reason);
     setTripBusy(false);
     if (!result.success) {
       toast.error(result.error || "Unable to cancel trip");
@@ -689,7 +702,12 @@ const Index = () => {
       return;
     }
     setTrip(null);
-    toast.success("Trip cancelled — returned to pool");
+    const returned = result.data?.returned_orders;
+    toast.success(
+      returned != null
+        ? `Trip handed back — ${returned} order${returned === 1 ? "" : "s"} returned to the pool`
+        : "Trip handed back — returned to pool",
+    );
     play("tick");
     refreshDashboard();
   };

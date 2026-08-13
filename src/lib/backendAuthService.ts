@@ -18,14 +18,14 @@ const DEVICE_KEY = "freshon_delivery_device_auth_key";
 export class BackendAuthService {
   static async sendOtp(phone: string): Promise<ApiResult<SendOtpResponse>> {
     const response = await apiClient.post<SendOtpResponse>("/api/auth/send-otp/", { phone });
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
   static async verifyOtp(phone: string, otp: string): Promise<ApiResult<DeliveryAuthUser>> {
     const response = await apiClient.post<VerifyOtpResponse>("/api/auth/verify-otp/", { phone, otp });
 
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
 
     const deviceKey = response.data?.device_auth_key;
     const user = response.data?.user;

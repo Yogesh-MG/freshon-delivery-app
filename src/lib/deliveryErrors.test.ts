@@ -36,6 +36,37 @@ describe("classifyDeliveryError", () => {
   });
 });
 
+describe("classifyDeliveryError with a server code", () => {
+  it("trusts the code over the prose", () => {
+    // The code is authoritative — the message may be reworded or localised.
+    expect(classifyDeliveryError("anything at all", "INVALID_OTP")).toBe("otp");
+    expect(classifyDeliveryError("anything at all", "OUTSIDE_GEOFENCE")).toBe("location");
+    expect(classifyDeliveryError("anything at all", "NETWORK_UNREACHABLE")).toBe("network");
+  });
+
+  it("reads the state codes the round-two API added", () => {
+    expect(classifyDeliveryError("", "NOT_IN_TRANSIT")).toBe("state");
+    expect(classifyDeliveryError("", "ALREADY_DELIVERED")).toBe("state");
+    expect(classifyDeliveryError("", "TRIP_TAKEN")).toBe("state");
+  });
+
+  it("never blames the rider for a malformed request", () => {
+    // These mean the app sent something wrong. Classing them as an OTP failure
+    // would wipe a correct code the rider just typed.
+    expect(classifyDeliveryError("stop_id is required.", "VALIDATION_ERROR")).toBe("unknown");
+    expect(classifyDeliveryError("", "INVALID_TYPE")).toBe("unknown");
+    expect(classifyDeliveryError("", "STOP_MISMATCH")).toBe("unknown");
+  });
+
+  it("falls back to the prose for a code it doesn't know", () => {
+    expect(classifyDeliveryError("Invalid delivery OTP", "SOME_NEW_CODE")).toBe("otp");
+  });
+
+  it("still works with no code at all, for older deployments", () => {
+    expect(classifyDeliveryError("Incorrect OTP")).toBe("otp");
+  });
+});
+
 describe("deliveryFailureHint", () => {
   it("tells the rider to act differently for each failure", () => {
     expect(deliveryFailureHint("otp")).toMatch(/resend|customer/i);

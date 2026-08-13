@@ -30,13 +30,13 @@ export interface DeliveryProof {
 export class DeliveryAssignmentService {
   static async getAssignments(): Promise<ApiResult<Assignment[]>> {
     const response = await apiClient.get<Assignment[]>("/api/delivery-partner/assignments/");
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data || [] };
   }
 
   static async acceptAssignment(id: string): Promise<ApiResult<Assignment>> {
     const response = await apiClient.post<Assignment>(`/api/delivery-partner/assignments/${id}/accept/`);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
@@ -44,7 +44,7 @@ export class DeliveryAssignmentService {
     const response = await apiClient.post(`/api/delivery-partner/assignments/${id}/pickup/`, {
       handover_code: handoverCode,
     });
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true };
   }
 
@@ -53,7 +53,7 @@ export class DeliveryAssignmentService {
       latitude,
       longitude,
     });
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true };
   }
 
@@ -84,13 +84,13 @@ export class DeliveryAssignmentService {
     if (proof.exceptionReason) body.exception_reason = proof.exceptionReason;
 
     const response = await apiClient.post(`/api/delivery-partner/assignments/${id}/deliver/`, body);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true };
   }
 
   static async resendOtp(id: string): Promise<ApiResult> {
     const response = await apiClient.post(`/api/delivery-partner/assignments/${id}/resend-otp/`);
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true };
   }
 }

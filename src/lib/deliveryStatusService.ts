@@ -49,13 +49,13 @@ export class DeliveryStatusService {
       latitude,
       longitude,
     });
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
   static async getEarnings(): Promise<ApiResult<EarningsStats>> {
     const response = await apiClient.get<EarningsStats>("/api/delivery-partner/earnings/");
-    if (response.error) return { success: false, error: response.error };
+    if (response.error) return { success: false, error: response.error, errorCode: response.errorCode };
     return { success: true, data: response.data };
   }
 
@@ -72,6 +72,7 @@ export class DeliveryStatusService {
     attempts = PROOF_UPLOAD_ATTEMPTS,
   ): Promise<ApiResult<{ url: string }>> {
     let lastError = "Photo upload failed";
+    let lastCode: string | undefined;
 
     for (let attempt = 1; attempt <= attempts; attempt++) {
       const formData = new FormData();
@@ -88,12 +89,13 @@ export class DeliveryStatusService {
       if (!response.error) return { success: true, data: response.data };
 
       lastError = response.error;
+      lastCode = response.errorCode;
       if (!isTransient(response.status) || attempt === attempts) break;
       // 400 ms, then 800 ms. Long enough to outlast a handover between cells,
       // short enough that the rider isn't left holding the phone.
       await delay(400 * attempt);
     }
 
-    return { success: false, error: lastError };
+    return { success: false, error: lastError, errorCode: lastCode };
   }
 }

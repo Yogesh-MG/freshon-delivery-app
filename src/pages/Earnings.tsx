@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
     ArrowDownToLine,
@@ -20,6 +20,10 @@ import { BottomNav } from "@/components/freshon/BottomNav";
 import { DeliveryPartnerService, EarningsHistory, DailyEarning, DeliveryPartnerProfile } from "@/lib/deliveryPartnerService";
 import { DeliveryWalletService, WalletSummary, Withdrawal, WithdrawMethod } from "@/lib/deliveryWalletService";
 
+/** Unique per withdrawal attempt; the server dedupes on it. */
+const newWithdrawKey = () =>
+    `wd-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
 const PERIOD_OPTIONS = [
     { value: 7, label: "Last 7 days" },
     { value: 30, label: "Last 30 days" },
@@ -36,6 +40,8 @@ const Earnings = () => {
     const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
     const [profile, setProfile] = useState<DeliveryPartnerProfile | null>(null);
     const [showWithdraw, setShowWithdraw] = useState(false);
+    /** Held across retries of the same withdrawal, cleared once one succeeds. */
+    const withdrawKeyRef = useRef<string | null>(null);
 
     useEffect(() => {
         loadEarnings();
@@ -86,8 +92,18 @@ const Earnings = () => {
     };
 
     const submitWithdraw = async (amount: number, method: WithdrawMethod) => {
-        const res = await DeliveryWalletService.requestWithdrawal(amount, method);
+        // One key per attempt at this amount+method. The UI blocks double-taps,
+        // but a lost response is invisible to that guard — the rider asks for
+        // Rs 2,000, the reply dies in a lift, they tap again. Re-sending the
+        // same key returns the original withdrawal instead of paying twice.
+        const res = await DeliveryWalletService.requestWithdrawal(
+            amount,
+            method,
+            withdrawKeyRef.current ?? (withdrawKeyRef.current = newWithdrawKey()),
+        );
         if (res.success) {
+            // Spent — the next request is a different one and needs its own key.
+            withdrawKeyRef.current = null;
             toast.success("Withdrawal requested");
             setShowWithdraw(false);
             loadWallet();

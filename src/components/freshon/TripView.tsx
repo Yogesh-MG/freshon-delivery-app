@@ -183,8 +183,11 @@ export const TripView = ({
         <BagScanFlow trip={trip} onAllScanned={onConfirmPickup} busy={busy} />
       )}
 
-      {awaitingPickup && onCancel && (
-        <CancelTripButton onCancel={onCancel} busy={busy} />
+      {/* Available after pickup too. A rider whose bike dies mid-route has to
+          be able to give the orders back; the server returns the undelivered
+          ones to the pool and keeps the completed ones completed. */}
+      {onCancel && trip.status !== "COMPLETED" && (
+        <CancelTripButton onCancel={onCancel} busy={busy} started={!awaitingPickup} />
       )}
 
       <div className="space-y-2">
@@ -240,7 +243,11 @@ export const TripView = ({
   );
 };
 
-const CancelTripButton = ({ onCancel, busy }: { onCancel: () => Promise<void>; busy?: boolean }) => {
+const CancelTripButton = ({
+  onCancel,
+  busy,
+  started = false,
+}: { onCancel: () => Promise<void>; busy?: boolean; started?: boolean }) => {
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
@@ -251,7 +258,7 @@ const CancelTripButton = ({ onCancel, busy }: { onCancel: () => Promise<void>; b
         disabled={busy}
         className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-3 text-sm font-bold text-destructive dark:bg-destructive/10 disabled:opacity-50"
       >
-        <X className="h-4 w-4" /> Cancel Trip
+        <X className="h-4 w-4" /> {started ? "Hand back trip" : "Cancel Trip"}
       </button>
     );
   }
@@ -259,7 +266,9 @@ const CancelTripButton = ({ onCancel, busy }: { onCancel: () => Promise<void>; b
   return (
     <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 dark:bg-destructive/10">
       <p className="mb-3 text-center text-sm font-semibold text-destructive">
-        Cancel this trip? It will be returned to the pool.
+        {started
+          ? "Hand this trip back? Stops you haven't delivered go back to the pool for another rider."
+          : "Cancel this trip? It will be returned to the pool."}
       </p>
       <div className="flex gap-3">
         <button

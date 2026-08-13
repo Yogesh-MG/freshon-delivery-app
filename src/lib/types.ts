@@ -58,4 +58,6 @@ export interface ApiResult<T = void> {
   success: boolean;
   data?: T;
   error?: string;
+  /** Server's machine-readable failure code, when it sent one. */
+  errorCode?: string;
 }
