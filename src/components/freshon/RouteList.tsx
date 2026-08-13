@@ -54,7 +54,7 @@ export const RouteList = ({
           >
             <div className="flex flex-col items-center pl-1">
               <div className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-extrabold
-                ${isPickup ? "bg-gradient-amber text-accent-foreground" : "bg-primary-soft text-primary"}`}>
+                ${isPickup ? "bg-accent text-accent-foreground" : "bg-primary-soft text-primary"}`}>
                 {done ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
               </div>
               {i < stops.length - 1 && <div className="mt-1 w-0.5 flex-1 bg-border" />}

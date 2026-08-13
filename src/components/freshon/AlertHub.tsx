@@ -22,7 +22,7 @@ export const AlertHub = ({ assignmentCount }: { assignmentCount: number }) => {
             className="flex items-start gap-3 rounded-2xl glass p-3 shadow-card-soft animate-fade-up"
             style={{ animationDelay: `${i * 80}ms` }}
           >
-            <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${isSurge ? "bg-gradient-amber text-accent-foreground" : "bg-primary-soft text-primary"}`}>
+            <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${isSurge ? "bg-accent text-accent-foreground" : "bg-primary-soft text-primary"}`}>
               <Icon className="h-4 w-4" />
             </div>
             <div className="min-w-0">

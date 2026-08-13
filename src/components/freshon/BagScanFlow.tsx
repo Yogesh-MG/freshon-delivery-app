@@ -200,7 +200,7 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
                 <button
                     onClick={confirmPickup}
                     disabled={busy}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-60"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-60"
                 >
                     <CheckCircle2 className="h-4 w-4" />
                     Retry hub handover ({dropoffs.length} orders)

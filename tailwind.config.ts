@@ -16,12 +16,6 @@ export default {
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
-      backgroundImage: {
-        'gradient-primary': 'var(--gradient-primary)',
-        'gradient-amber': 'var(--gradient-amber)',
-        'gradient-slate': 'var(--gradient-slate)',
-        'gradient-fresh': 'var(--gradient-fresh)',
-      },
       boxShadow: {
         'glow-primary': 'var(--shadow-glow-primary)',
         'glow-amber': 'var(--shadow-glow-amber)',

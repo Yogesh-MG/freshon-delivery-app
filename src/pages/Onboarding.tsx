@@ -313,11 +313,11 @@ const Onboarding = () => {
     const getStatusIcon = (status: string) => {
         switch (status) {
             case "verified":
-                return <CheckCircle className="h-5 w-5 text-green-500" />;
+                return <CheckCircle className="h-5 w-5 text-success" />;
             case "rejected":
-                return <AlertCircle className="h-5 w-5 text-red-500" />;
+                return <AlertCircle className="h-5 w-5 text-destructive" />;
             default:
-                return <Clock className="h-5 w-5 text-amber-500" />;
+                return <Clock className="h-5 w-5 text-accent" />;
         }
     };
 
@@ -347,7 +347,7 @@ const Onboarding = () => {
                         </div>
                         <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                             <div
-                                className="h-full rounded-full bg-gradient-primary transition-all duration-300"
+                                className="h-full rounded-full bg-primary transition-all duration-300"
                                 style={{ width: `${(step / STEPS.length) * 100}%` }}
                             />
                         </div>
@@ -405,7 +405,7 @@ const Onboarding = () => {
                                                 aria-pressed={active}
                                                 onClick={() => setProfile({ ...profile, vehicle_type: v.id })}
                                                 className={`flex min-h-[72px] touch-manipulation flex-col items-center justify-center gap-1.5 rounded-2xl text-[11px] font-bold transition active:scale-95
-                          ${active ? "bg-gradient-primary text-primary-foreground shadow-glow-primary" : "bg-card text-muted-foreground ring-1 ring-border"}`}
+                          ${active ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-card text-muted-foreground ring-1 ring-border"}`}
                                             >
                                                 <Icon className="h-5 w-5" /> {v.name}
                                             </button>
@@ -497,7 +497,7 @@ const Onboarding = () => {
                                                 aria-pressed={active}
                                                 onClick={() => setProfile({ ...profile, payout_method: m.id })}
                                                 className={`flex min-h-[56px] touch-manipulation items-center justify-center gap-2 rounded-2xl text-sm font-bold transition active:scale-95
-                        ${active ? "bg-gradient-primary text-primary-foreground shadow-glow-primary" : "bg-card text-muted-foreground ring-1 ring-border"}`}
+                        ${active ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-card text-muted-foreground ring-1 ring-border"}`}
                                             >
                                                 <Icon className="h-4 w-4" /> {m.label}
                                             </button>
@@ -595,7 +595,7 @@ const Onboarding = () => {
                                             <div className="flex items-start gap-3">
                                                 <div
                                                     className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl
-                          ${uploaded ? "bg-gradient-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
+                          ${uploaded ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                                                 >
                                                     {uploaded ? getStatusIcon(doc.status) : <FileCheck2 className="h-5 w-5" />}
                                                 </div>
@@ -605,14 +605,14 @@ const Onboarding = () => {
                                                         {uploaded && (
                                                             <span
                                                                 className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider
-                                ${doc?.status === "verified" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600"}`}
+                                ${doc?.status === "verified" ? "bg-success/10 text-success" : "bg-accent/10 text-accent"}`}
                                                             >
                                                                 {doc?.status_display}
                                                             </span>
                                                         )}
                                                     </div>
                                                     {doc?.rejection_reason && (
-                                                        <div className="mt-1 text-xs text-red-500">{doc.rejection_reason}</div>
+                                                        <div className="mt-1 text-xs text-destructive">{doc.rejection_reason}</div>
                                                     )}
                                                     <input
                                                         type="text"
@@ -635,7 +635,7 @@ const Onboarding = () => {
                                                     />
                                                     <label
                                                         className={`mt-2 flex min-h-[44px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition active:scale-[.98]
-                            ${isUploading ? "bg-muted text-muted-foreground" : uploaded ? "bg-secondary text-secondary-foreground" : "bg-gradient-amber text-accent-foreground shadow-glow-amber"}`}
+                            ${isUploading ? "bg-muted text-muted-foreground" : uploaded ? "bg-secondary text-secondary-foreground" : "bg-accent text-accent-foreground shadow-glow-amber"}`}
                                                     >
                                                         {isUploading ? (
                                                             <>
@@ -684,8 +684,8 @@ const Onboarding = () => {
                         {step === 4 && (
                             <div className="animate-fade-up">
                                 <div className="grid place-items-center pt-4">
-                                    <div className="grid h-20 w-20 place-items-center rounded-full bg-green-500/10">
-                                        <CheckCircle2 className="h-10 w-10 text-green-500" />
+                                    <div className="grid h-20 w-20 place-items-center rounded-full bg-success/10">
+                                        <CheckCircle2 className="h-10 w-10 text-success" />
                                     </div>
                                     <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-foreground">Submitted</h2>
                                     <p className="mt-1 text-center text-sm text-muted-foreground">
@@ -702,7 +702,7 @@ const Onboarding = () => {
                                                 {doc ? (
                                                     <span
                                                         className={`flex items-center gap-1 text-xs font-bold
-                            ${doc.status === "verified" ? "text-green-600" : doc.status === "rejected" ? "text-red-500" : "text-amber-600"}`}
+                            ${doc.status === "verified" ? "text-success" : doc.status === "rejected" ? "text-destructive" : "text-accent"}`}
                                                     >
                                                         {getStatusIcon(doc.status)}
                                                         {doc.status_display}
@@ -737,7 +737,7 @@ const Onboarding = () => {
         textarea.field { height: auto; line-height: 1.5; }
         .btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           width: 100%; height: 56px; border-radius: 16px; padding: 0 20px;
-          background: var(--gradient-primary); color: hsl(var(--primary-foreground));
+          background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
           font-size: 15px; font-weight: 700; box-shadow: var(--shadow-glow-primary);
           transition: transform .12s ease; touch-action: manipulation;
           -webkit-tap-highlight-color: transparent; user-select: none; }

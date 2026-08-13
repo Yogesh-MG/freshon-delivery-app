@@ -48,11 +48,6 @@
 
     --radius: 1.25rem;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(142 72% 29%), hsl(142 65% 40%));
-    --gradient-amber: linear-gradient(135deg, hsl(38 92% 50%), hsl(28 95% 55%));
-    --gradient-slate: linear-gradient(160deg, hsl(215 28% 22%), hsl(215 25% 12%));
-    --gradient-fresh: linear-gradient(180deg, hsl(210 40% 98%), hsl(142 30% 95%));
 
     /* Shadows */
     --shadow-glow-primary: 0 8px 30px -8px hsl(142 72% 29% / 0.45);
@@ -121,10 +116,6 @@
     --input: 215 18% 22%;
     --ring: 142 58% 50%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(142 58% 38%), hsl(142 52% 48%));
-    --gradient-amber: linear-gradient(135deg, hsl(38 88% 50%), hsl(28 90% 55%));
-    --gradient-slate: linear-gradient(160deg, hsl(215 24% 18%), hsl(215 28% 10%));
-    --gradient-fresh: linear-gradient(180deg, hsl(215 28% 10%), hsl(142 20% 12%));
 
     /* Shadows read as depth on light grounds and as nothing on dark ones, so
        they lean on a darker spread plus a hairline of light from the border. */
@@ -163,23 +154,11 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    background:
-      radial-gradient(1200px 600px at 100% -10%, hsl(142 50% 92%) 0%, transparent 60%),
-      radial-gradient(900px 500px at -10% 100%, hsl(38 80% 92%) 0%, transparent 55%),
-      hsl(var(--background));
+    background: hsl(var(--background));
     /* Safe-area is applied inside the app shell (PhoneFrame), not here — padding
        the body would push the full-height (h-dvh) shells past the viewport and
        clip their bottom behind the nav bar. */
   }
-  /* The same two glows, dropped to embers — enough to keep the ground from
-     reading as flat black, not enough to lift it. */
-  .dark body {
-    background:
-      radial-gradient(1200px 600px at 100% -10%, hsl(142 45% 12%) 0%, transparent 60%),
-      radial-gradient(900px 500px at -10% 100%, hsl(38 50% 11%) 0%, transparent 55%),
-      hsl(var(--background));
-  }
-
   /**
    * Riders set this so software stops moving under them. The app defines twelve
    * keyframe animations — including a confetti burst that fires on every
@@ -226,18 +205,16 @@
     -webkit-backdrop-filter: blur(18px) saturate(160%);
     border: 1px solid hsla(0, 0%, 100%, 0.08);
   }
+  /* Grid lines from an SVG tile. This was two hard-stop linear-gradients —
+     a common trick, but the app now carries no gradients of any kind. */
   .map-grid {
     background-color: hsl(142 30% 94%);
-    background-image:
-      linear-gradient(hsl(142 25% 88%) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(142 25% 88%) 1px, transparent 1px);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0v40' fill='none' stroke='%23cfe0d4' stroke-width='1'/%3E%3C/svg%3E");
     background-size: 40px 40px;
   }
   .dark .map-grid {
     background-color: hsl(215 26% 11%);
-    background-image:
-      linear-gradient(hsl(215 20% 17%) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(215 20% 17%) 1px, transparent 1px);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0v40' fill='none' stroke='%23273039' stroke-width='1'/%3E%3C/svg%3E");
   }
 
   /**
@@ -317,16 +294,12 @@
   .animate-slide-up { animation: slide-up 0.45s var(--transition-smooth) both; }
 
   @keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.55; }
   }
   .shimmer {
-    background: linear-gradient(90deg,
-      hsl(var(--muted)) 0%,
-      hsl(210 30% 97%) 50%,
-      hsl(var(--muted)) 100%);
-    background-size: 200% 100%;
-    animation: shimmer 1.6s linear infinite;
+    background: hsl(var(--muted));
+    animation: shimmer 1.6s ease-in-out infinite;
   }
 
   @keyframes ripple {

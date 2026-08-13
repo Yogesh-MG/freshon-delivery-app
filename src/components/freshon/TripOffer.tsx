@@ -162,7 +162,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
           <button
             onClick={handleClaim}
             disabled={claiming}
-            className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-amber py-4 text-base font-extrabold text-accent-foreground shadow-glow-amber disabled:opacity-80"
+            className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-accent py-4 text-base font-extrabold text-accent-foreground shadow-glow-amber disabled:opacity-80"
           >
             {claiming ? (
               <>

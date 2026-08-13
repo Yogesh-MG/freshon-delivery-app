@@ -29,7 +29,7 @@ const NotFound = () => {
             <p className="mt-1 text-sm text-muted-foreground">Oops! Page not found</p>
             <a
               href="/"
-              className="mt-6 flex items-center justify-center rounded-2xl bg-gradient-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.98]"
+              className="mt-6 flex items-center justify-center rounded-2xl bg-primary px-6 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.98]"
             >
               Return to Home
             </a>

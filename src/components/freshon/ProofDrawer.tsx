@@ -131,7 +131,7 @@ const CustomerContact = ({ stop }: { stop: Stop }) => {
         <button
           type="button"
           onClick={() => dialPhone(phone)}
-          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-primary px-3.5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow-primary"
+          className="flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow-primary"
         >
           <Phone className="h-3.5 w-3.5" /> Call
         </button>
@@ -441,7 +441,7 @@ export const ProofDrawer = ({
                 </div>
               </div>
               {stop.notes && (
-                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary-soft p-3 text-sm text-secondary">
+                <div className="rounded-2xl border border-dashed border-primary/40 bg-primary-soft p-3 text-sm text-foreground">
                   <span className="font-bold text-primary">Customer note: </span>{stop.notes}
                 </div>
               )}
@@ -461,7 +461,7 @@ export const ProofDrawer = ({
                   )}
                   <button
                     onClick={() => setMode("photo")}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary"
                   >
                     <Camera className="h-4 w-4" /> Start proof of delivery
                   </button>
@@ -474,7 +474,7 @@ export const ProofDrawer = ({
                 </div>
                 )
               ) : (
-                <button onClick={() => finish({ type: "photo" })} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50">
+                <button onClick={() => finish({ type: "photo" })} disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50">
                   <ScanLine className="h-4 w-4" /> Scan handover QR
                 </button>
               )}
@@ -570,7 +570,7 @@ export const ProofDrawer = ({
                     photoMeta: photo?.meta,
                   })
                 }
-                className="w-full rounded-2xl bg-gradient-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition disabled:opacity-50"
+                className="w-full rounded-2xl bg-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition disabled:opacity-50"
               >
                 {busy ? "Verifying…" : "Verify & Complete"}
               </button>

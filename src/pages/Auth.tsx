@@ -213,21 +213,18 @@ const Auth = () => {
             <style>{`
         .btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           height: 56px; border-radius: 16px; padding: 0 20px;
-          background: var(--gradient-primary); color: hsl(var(--primary-foreground));
+          background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
           font-size: 15px; font-weight: 700; box-shadow: var(--shadow-glow-primary);
           transition: transform .15s; }
         .btn-primary:hover:not(:disabled) { transform: scale(1.01); }
         .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
 
-        /* Fade the glyph field out towards the middle so the form always reads
-           against clean background, and in at the edges for a framed look. */
-        .auth-backdrop {
-          -webkit-mask-image: radial-gradient(ellipse 72% 46% at 50% 50%, transparent 30%, #000 100%);
-          mask-image: radial-gradient(ellipse 72% 46% at 50% 50%, transparent 30%, #000 100%);
-        }
+        /* The glyph field used to be masked out towards the middle with a radial
+           gradient. Without gradients it is held at a low, even opacity instead,
+           which keeps the form readable over it. */
         .auth-glyph {
           position: absolute;
-          opacity: .24;
+          opacity: .13;
           /* Keyframes outrank inline styles, so the per-glyph rotation has to
              ride through --r inside the animation rather than on the element. */
           transform: rotate(var(--r, 0deg));
@@ -292,7 +289,7 @@ const DeliveryBackdrop = () => (
 // The glyph has no intrinsic size, so the tile is what sizes it.
 const BikeMark = () => (
     <div className="flex flex-col items-center gap-3">
-        <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-gradient-primary shadow-glow-primary">
+        <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-primary shadow-glow-primary">
             <Motorbike className="h-10 w-10 text-primary-foreground" />
         </div>
         <Wordmark size="lg" />

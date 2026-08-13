@@ -195,7 +195,7 @@ export const CameraCapture = ({
             <>
               <button
                 onClick={() => onCapture(preview.file, preview.meta)}
-                className="w-full rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber"
+                className="w-full rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber"
               >
                 Use this photo
               </button>
@@ -218,7 +218,7 @@ export const CameraCapture = ({
               <button
                 onClick={() => void shoot()}
                 disabled={!ready || processing}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-amber px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50"
               >
                 <Camera className="h-4 w-4" /> {processing ? "Saving…" : "Take photo"}
               </button>

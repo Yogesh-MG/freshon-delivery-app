@@ -20,7 +20,7 @@ export const LoadMeter = ({ value, capacity }: { value: number | null; capacity:
       </div>
       <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full bg-gradient-primary transition-all duration-700"
+          className="h-full rounded-full bg-primary transition-all duration-700"
           style={{ width: `${pct}%` }}
         />
       </div>

@@ -1,9 +1,10 @@
 import { Star } from "lucide-react";
 
 /**
- * Rating tiers, worst first. The badge sits on the green gradient profile card,
- * so the hue has to carry on an opaque pill — coloured text straight on the
- * gradient makes the green tier invisible and the red tier muddy.
+ * Rating tiers, worst first. The badge sits on the green profile card, so the
+ * hue has to carry on an opaque pill — coloured text straight on the green
+ * makes the top tier invisible and the bottom tier muddy. The pill stays white
+ * in both themes for that reason: these three hues need a light ground.
  */
 const TIERS = [
     { min: 0, color: "hsl(0 84% 45%)", label: "Needs improvement" },

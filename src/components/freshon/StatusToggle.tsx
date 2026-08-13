@@ -61,7 +61,7 @@ export const StatusToggle = ({
             aria-label={online ? "Go offline" : "Go online"}
             className={`relative w-full overflow-hidden rounded-3xl p-5 text-left transition-all duration-500
         ${online
-                    ? "bg-gradient-primary text-primary-foreground shadow-glow-primary"
+                    ? "bg-primary text-primary-foreground shadow-glow-primary"
                     : "glass-dark text-primary-foreground"}
         ${online && !pending ? "animate-glow-pulse" : ""}
         ${pending ? "cursor-wait opacity-95" : ""}`}
@@ -74,11 +74,11 @@ export const StatusToggle = ({
                 />
             ))}
 
-            {/* A sweep across the whole control, so the wait reads even at a
-                glance from a handlebar mount — the small spinner alone is easy
+            {/* A solid band travelling across the control, so the wait reads at
+                a glance from a handlebar mount — the small spinner alone is easy
                 to miss in daylight. */}
             {pending && (
-                <span className="pointer-events-none absolute inset-0 animate-status-sweep bg-gradient-to-r from-transparent via-white/15 to-transparent" />
+                <span className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 animate-status-sweep bg-white/12" />
             )}
 
             <div className="relative z-10 flex items-center justify-between gap-3">

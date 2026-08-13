@@ -203,7 +203,7 @@ export const TripView = ({
               <div className="flex flex-col items-center pl-1">
                 <div
                   className={`grid h-9 w-9 place-items-center rounded-xl text-xs font-extrabold ${
-                    isPickup ? "bg-gradient-amber text-accent-foreground" : "bg-primary-soft text-primary"
+                    isPickup ? "bg-accent text-accent-foreground" : "bg-primary-soft text-primary"
                   }`}
                 >
                   {done ? <CheckCircle2 className="h-4 w-4" /> : isPickup ? "H" : i}
@@ -249,7 +249,7 @@ const CancelTripButton = ({ onCancel, busy }: { onCancel: () => Promise<void>; b
       <button
         onClick={() => setConfirming(true)}
         disabled={busy}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/30 bg-red-50 px-5 py-3 text-sm font-bold text-red-600 dark:bg-red-500/10 dark:text-red-400 disabled:opacity-50"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-3 text-sm font-bold text-destructive dark:bg-destructive/10 disabled:opacity-50"
       >
         <X className="h-4 w-4" /> Cancel Trip
       </button>
@@ -257,8 +257,8 @@ const CancelTripButton = ({ onCancel, busy }: { onCancel: () => Promise<void>; b
   }
 
   return (
-    <div className="rounded-2xl border border-red-400/30 bg-red-50 p-4 dark:bg-red-500/10">
-      <p className="mb-3 text-center text-sm font-semibold text-red-700 dark:text-red-400">
+    <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 dark:bg-destructive/10">
+      <p className="mb-3 text-center text-sm font-semibold text-destructive">
         Cancel this trip? It will be returned to the pool.
       </p>
       <div className="flex gap-3">
@@ -271,7 +271,7 @@ const CancelTripButton = ({ onCancel, busy }: { onCancel: () => Promise<void>; b
         <button
           onClick={async () => { setCancelling(true); await onCancel(); setCancelling(false); }}
           disabled={cancelling}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white disabled:opacity-70"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-destructive py-2.5 text-sm font-bold text-destructive-foreground disabled:opacity-70"
         >
           {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
           Yes, cancel
