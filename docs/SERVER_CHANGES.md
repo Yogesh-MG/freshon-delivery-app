@@ -69,7 +69,7 @@ endpoint, not the recipient, not the storage, not the lifetime.
 | Issued when | rider taps Continue on the login screen | at pickup, automatically |
 | Verified by | `verify-otp/`, returns a device key | `deliver/`, with `type: "otp"` and `otp_code` |
 | Who types it in | the rider, reading their own SMS | the rider, reading it aloud from the customer |
-| Covered by | **S6** | **S2** |
+| Covered by | **S6** | **S4** |
 
 `resend-otp/` under `/assignments/{id}/` is the **customer's** code. It resends the
 handover code for that delivery. It has nothing to do with logging in.
@@ -148,9 +148,9 @@ Keep `error` exactly as it is (old clients show it). **Add** `error_code`:
 | `OTP_ATTEMPTS_EXCEEDED` | 429 | too many wrong codes for this stop |
 | `OUTSIDE_GEOFENCE` | 400 | rider too far from the drop; include `distance_m` |
 | `LOCATION_REQUIRED` | 400 | no coordinates supplied and the stop is geofenced |
-| `ALREADY_DELIVERED` | 409 | see S2 — usually should not be reached |
+| `ALREADY_DELIVERED` | 409 | see S7 — usually should not be reached |
 | `NOT_IN_TRANSIT` | 409 | assignment is in the wrong state |
-| `PROOF_REQUIRED` | 400 | see S1 |
+| `PROOF_REQUIRED` | 400 | see S5 |
 
 Apply the same `error_code` convention to `pickup/`, `transit/` and `resend-otp/` while
 you are in there. It costs little and the client already has the plumbing.
@@ -217,11 +217,11 @@ failed upload and will block the delivery.
 ### Also: link the proof to the delivery
 
 Today `/proof/` and `deliver/` are unrelated writes joined only by `mission_id`. With
-`stop_id` here and `proof_url` from S1, attach the proof row to the stop it evidences.
+`stop_id` here and `proof_url` from S5, attach the proof row to the stop it evidences.
 
 ---
 
-## S1 — Record and flag the no-code exception
+## S3 — Record and flag the no-code exception
 
 ### Current behaviour
 
@@ -263,7 +263,7 @@ is the signal this flag exists to produce.
 
 ---
 
-## S2 — Rate-limit `resend-otp/` (the customer's code) and report the limit
+## S4 — Rate-limit `resend-otp/` (the customer's code) and report the limit
 
 ### Current behaviour
 
@@ -309,7 +309,7 @@ These are currently undocumented and the app has to guess:
 
 ---
 
-## S1 — Distinguish "both proofs captured" from "one"
+## S5 — Distinguish "both proofs captured" from "one"
 
 ### Current behaviour
 
@@ -333,7 +333,7 @@ for the first time.
 
 ## S6 — Rate-limit the rider **login** OTP
 
-This one is about `/api/auth/send-otp/` — the rider's own code. Separate system from S2;
+This one is about `/api/auth/send-otp/` — the rider's own code. Separate system from S4;
 see §1.
 
 ### Current behaviour
@@ -350,7 +350,7 @@ sent a second code with nothing between them. The app now has a proper resend wi
 - Extend the response additively:
   `{ "phone": "+91…", "message": "OTP sent", "cooldown_seconds": 30, "resends_remaining": 4 }`
 - `429` + `Retry-After` on refusal.
-- Same lifecycle rules as S2: resend invalidates the previous code, hashed storage,
+- Same lifecycle rules as S4: resend invalidates the previous code, hashed storage,
   constant-time compare, single use, capped verify attempts.
 
 ### Enumeration
@@ -361,7 +361,7 @@ not the number belongs to a registered rider — otherwise the endpoint is a fre
 
 ---
 
-## S2 — Make `deliver/` idempotent
+## S7 — Make `deliver/` idempotent
 
 ### Current behaviour
 

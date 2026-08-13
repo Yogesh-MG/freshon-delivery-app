@@ -1,6 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { initTheme } from "./lib/theme";
+
+// Before React mounts, so a rider on a dark street never gets a white flash on
+// launch. Applying the theme from an effect would paint light first, every time.
+initTheme();
 
 // Keep --app-height in sync with the *visible* viewport. On Android the soft
 // keyboard does not shrink `100dvh`, so full-height shells (PhoneFrame) would

@@ -8,6 +8,7 @@ import {
     Landmark,
     Loader2,
     LogOut,
+    Moon,
     MapPin,
     Car,
     Banknote,
@@ -31,6 +32,14 @@ import { Motorbike } from "./Onboarding";
 import { backendAuthService } from "@/lib/backendAuthService";
 import { useAuth } from "@/hooks/useAuth";
 import { SUPPORT_PHONE, dialPhone } from "@/lib/contact";
+import { useTheme, type ThemeChoice } from "@/lib/theme";
+
+/** "System" first: it is the default and the right answer for most riders. */
+const THEME_OPTIONS: { value: ThemeChoice; label: string }[] = [
+    { value: "system", label: "System" },
+    { value: "light", label: "Light" },
+    { value: "dark", label: "Dark" },
+];
 
 const VEHICLE_ICONS = {
     BIKE: Bike,
@@ -56,6 +65,7 @@ const toVehicleOption = (value: string): VehicleOption =>
 const Profile = () => {
     const navigate = useNavigate();
     const { signOut } = useAuth();
+    const { choice: theme, choose: chooseTheme } = useTheme();
     const [profile, setProfile] = useState<DeliveryPartnerProfile | null>(null);
     // Seeded from localStorage inside the sound module, so the choice survives
     // restarts and OTA bundle swaps.
@@ -130,7 +140,7 @@ const Profile = () => {
             toast.error("Choose how you want to get paid");
             return;
         }
-        if (isUpi && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(payoutForm.bank_upi.trim())) {
+        if (isUpi && !/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(payoutForm.bank_upi.trim())) {
             toast.error("Enter a valid UPI ID (e.g. name@oksbi)");
             return;
         }
@@ -547,6 +557,38 @@ const Profile = () => {
                                     </span>
                                 </button>
 
+                                {/* Appearance — riders working evenings asked for
+                                    this more than anything else on this screen. */}
+                                <div className="rounded-2xl bg-card p-4 shadow-card-soft ring-1 ring-border">
+                                    <div className="mb-3 flex items-center gap-2">
+                                        <Moon className="h-4 w-4 text-primary" />
+                                        <span className="text-sm font-bold text-foreground">Appearance</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Theme">
+                                        {THEME_OPTIONS.map((option) => (
+                                            <button
+                                                key={option.value}
+                                                type="button"
+                                                role="radio"
+                                                aria-checked={theme === option.value}
+                                                onClick={() => chooseTheme(option.value)}
+                                                className={`rounded-xl py-2.5 text-xs font-bold transition ${
+                                                    theme === option.value
+                                                        ? "bg-primary text-primary-foreground shadow-glow-primary"
+                                                        : "bg-muted text-muted-foreground"
+                                                }`}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="mt-2 text-xs text-muted-foreground">
+                                        {theme === "system"
+                                            ? "Following your phone — switches with it at sunset."
+                                            : `Always ${theme}, whatever your phone is set to.`}
+                                    </p>
+                                </div>
+
                                 {/* Logout */}
                                 <button
                                     onClick={handleLogout}
@@ -575,7 +617,7 @@ const DetailRow = ({
     value,
     flush,
 }: {
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     label: string;
     value: string;
     flush?: boolean;
@@ -596,7 +638,7 @@ const StatCard = ({
     label,
     value,
 }: {
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     label: string;
     value: string;
 }) => (
@@ -605,7 +647,7 @@ const StatCard = ({
             <Icon className="h-4 w-4" />
         </div>
         <div className="truncate text-xl font-extrabold tabular-nums text-foreground">{value}</div>
-        <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
 );
 

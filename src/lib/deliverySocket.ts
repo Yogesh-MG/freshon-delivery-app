@@ -82,7 +82,12 @@ class DeliverySocketManager {
   }
 
   on<K extends keyof EventMap>(event: K, listener: Listener<K>) {
-    if (!this.listeners[event]) this.listeners[event] = new Set() as any;
+    // TypeScript won't assign through a generic index into a mapped type, even
+    // though every slot holds exactly a Set of that event's listener. Narrowing
+    // the view of `listeners` to this one key says that, without an `any`.
+    if (!this.listeners[event]) {
+      (this.listeners as Record<K, Set<Listener<K>>>)[event] = new Set<Listener<K>>();
+    }
     (this.listeners[event] as Set<Listener<K>>).add(listener);
     return () => (this.listeners[event] as Set<Listener<K>>).delete(listener);
   }

@@ -146,7 +146,7 @@ export const CameraCapture = ({
     <div className="fixed inset-0 z-[70] flex flex-col bg-secondary/95 backdrop-blur-sm">
       <div className="flex items-center justify-between px-5 pt-6 text-primary-foreground">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent-glow">Step 1 of 2</div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent-glow">Step 1 of 2</div>
           <div className="text-lg font-extrabold">{title}</div>
         </div>
         <button onClick={() => { stop(); onCancel(); }} className="rounded-full bg-white/10 p-2" aria-label="Close camera">

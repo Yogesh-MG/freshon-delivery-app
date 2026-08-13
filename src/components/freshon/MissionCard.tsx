@@ -61,7 +61,7 @@ export const MissionCard = ({ mission, onAccept }: { mission: Assignment; onAcce
 
 const Stat = ({ label, value, accent }: { label: string; value: string; accent?: boolean }) => (
   <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
-    <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">{label}</div>
+    <div className="text-[11px] font-bold uppercase tracking-wider opacity-70">{label}</div>
     <div className={`mt-0.5 truncate text-lg font-extrabold tabular-nums ${accent ? "text-accent-glow" : ""}`}>{value}</div>
   </div>
 );

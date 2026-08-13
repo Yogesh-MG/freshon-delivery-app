@@ -8,6 +8,6 @@ export const Wordmark = ({ size = "sm" }: { size?: "sm" | "lg" }) => (
         <div className={`font-extrabold tracking-tight text-foreground ${size === "lg" ? "text-2xl" : "text-xl"}`}>
             FreshOn<span className="text-primary"> Go</span>
         </div>
-        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Partner</div>
+        <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">Partner</div>
     </div>
 );

@@ -26,7 +26,7 @@ export const BottomNav = ({ active }: { active: NavTab }) => {
                             key={id}
                             onClick={() => !isActive && navigate(path)}
                             aria-current={isActive ? "page" : undefined}
-                            className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[10px] font-bold uppercase tracking-wider transition-colors
+                            className={`flex flex-1 flex-col items-center gap-1 rounded-xl py-2 text-[11px] font-bold uppercase tracking-wider transition-colors
                 ${isActive ? "bg-primary-soft text-primary" : "text-muted-foreground active:bg-muted"}`}
                         >
                             <Icon className={`h-5 w-5 ${isActive ? "" : "opacity-80"}`} />

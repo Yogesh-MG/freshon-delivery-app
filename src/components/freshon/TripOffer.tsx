@@ -76,7 +76,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
 
       <div className="flex items-center justify-between px-5 pt-5 text-primary-foreground">
         <div>
-          <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent-glow">
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-glow">
             New trip available
           </div>
           <div className="text-xl font-extrabold">
@@ -89,7 +89,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
           </div>
           <button
             onClick={onDismiss}
-            className="rounded-full bg-white/10 p-2"
+            className="rounded-full bg-white/10 p-2 tap-target"
             aria-label="Dismiss"
           >
             <X className="h-4 w-4" />
@@ -133,7 +133,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
                 <span className="truncate">{stop.address || stop.label}</span>
               </div>
               {(stop.order_id || stop.weight_kg != null) && (
-                <div className="mt-0.5 flex items-center gap-1 text-[10px] text-primary-foreground/50">
+                <div className="mt-0.5 flex items-center gap-1 text-[11px] text-primary-foreground/50">
                   <Package className="h-3 w-3" />
                   {[
                     stop.order_id ? `Order ${stop.order_id}` : null,
@@ -196,7 +196,7 @@ const StatCard = ({
   accent?: boolean;
 }) => (
   <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
-    <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary-foreground/60">
+    <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-primary-foreground/60">
       {icon} {label}
     </div>
     <div className={`mt-1 truncate text-base font-extrabold tabular-nums ${accent ? "text-accent-glow" : "text-primary-foreground"}`}>

@@ -143,7 +143,7 @@ export const TripView = ({
 
       <div className="flex items-center justify-between gap-3 rounded-3xl glass p-4 shadow-card-soft">
         <div>
-          <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+          <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
             <Route className="h-3.5 w-3.5" /> Optimized route
           </div>
           <div className="mt-0.5 text-lg font-extrabold tabular-nums text-foreground">
@@ -162,7 +162,7 @@ export const TripView = ({
         <button
           onClick={onReoptimize}
           disabled={busy}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-card shadow-card-soft ring-1 ring-border active:scale-95 disabled:opacity-50"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-card shadow-card-soft ring-1 ring-border active:scale-95 disabled:opacity-50 tap-target"
           aria-label="Re-optimize route"
         >
           <RefreshCw className={`h-4 w-4 text-foreground ${busy ? "animate-spin" : ""}`} />
@@ -172,7 +172,7 @@ export const TripView = ({
       <button
         onClick={handleNavigate}
         disabled={!canNavigate}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1a73e8] px-5 py-3.5 text-sm font-bold text-white shadow-md transition active:scale-[0.99] disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#1a73e8] px-5 py-3.5 text-sm font-bold text-white shadow-md transition active:scale-[0.99] disabled:opacity-40 tap-target"
         aria-label="Open in Google Maps"
       >
         <ExternalLink className="h-4 w-4" />
@@ -213,7 +213,7 @@ export const TripView = ({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                    className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
                       isPickup ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"
                     }`}
                   >

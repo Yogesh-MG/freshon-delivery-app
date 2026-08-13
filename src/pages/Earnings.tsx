@@ -118,7 +118,7 @@ const Earnings = () => {
                                     full-bleed cards read as one family. */}
                                 <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-accent/20 blur-2xl" />
                                 <div className="relative">
-                                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] opacity-80">
+                                    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] opacity-80">
                                         <Wallet className="h-3.5 w-3.5" /> Wallet balance
                                     </div>
                                     <div className="mt-1.5 text-3xl font-extrabold tracking-tight tabular-nums">
@@ -280,7 +280,7 @@ const Earnings = () => {
                                                     {w.method === "UPI" ? w.upi_id : `••• ${w.bank_account_number.slice(-4)}`} · {formatDate(w.requested_at)}
                                                 </div>
                                             </div>
-                                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${WITHDRAWAL_BADGE[w.status]}`}>
+                                            <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${WITHDRAWAL_BADGE[w.status]}`}>
                                                 {w.status}
                                             </span>
                                         </div>
@@ -366,7 +366,7 @@ const WithdrawSheet = ({
                 <div className="flex justify-center pt-3"><div className="h-1.5 w-12 rounded-full bg-border" /></div>
                 <div className="flex items-center justify-between px-5 pt-3">
                     <span className="text-base font-extrabold text-foreground">Withdraw earnings</span>
-                    <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted" aria-label="Close">
+                    <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted tap-target" aria-label="Close">
                         <X className="h-4 w-4" />
                     </button>
                 </div>
@@ -453,7 +453,7 @@ const SummaryCard = ({
     trend,
     color,
 }: {
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
     label: string;
     value: string;
     trend: string;
@@ -473,7 +473,7 @@ const SummaryCard = ({
                 <Icon className="h-4 w-4" />
             </div>
             <div className="truncate text-xl font-extrabold tabular-nums text-foreground">{value}</div>
-            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
+            <div className="mt-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</div>
             <div className="mt-1 truncate text-[11px] tabular-nums text-muted-foreground">{trend}</div>
         </div>
     );

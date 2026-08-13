@@ -1,3 +1,4 @@
+import { OfflineBanner } from "./OfflineBanner";
 import { ReactNode } from "react";
 
 export const PhoneFrame = ({ children }: { children: ReactNode }) => (
@@ -6,6 +7,9 @@ export const PhoneFrame = ({ children }: { children: ReactNode }) => (
         applied here so every screen's content stays clear of the system bars
         while the shell still fills the viewport. */}
     <div className="flex flex-col h-full min-h-0 flex-1 overflow-hidden pt-safe pb-safe pl-safe pr-safe md:rounded-[36px] md:p-0">
+      {/* Every screen, not just the dashboard — a rider can lose signal while
+          reading their earnings just as easily as at a customer's door. */}
+      <OfflineBanner />
       {children}
     </div>
   </div>

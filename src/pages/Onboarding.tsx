@@ -94,7 +94,7 @@ const payoutSchema = z
     })
     .superRefine((val, ctx) => {
         if (val.payout_method === "UPI") {
-            if (!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(val.bank_upi)) {
+            if (!/^[\w.-]{2,}@[a-zA-Z]{2,}$/.test(val.bank_upi)) {
                 ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["bank_upi"], message: "Enter a valid UPI ID (e.g. name@oksbi)" });
             }
         } else if (val.payout_method === "BANK") {
@@ -341,7 +341,7 @@ const Onboarding = () => {
                         <Wordmark />
 
                         {/* Progress — step name + a thin bar, nothing more. */}
-                        <div className="mt-6 flex items-baseline justify-between text-[10px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
+                        <div className="mt-6 flex items-baseline justify-between text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">
                             <span className="text-foreground">{STEPS[step - 1]}</span>
                             <span>{step} / {STEPS.length}</span>
                         </div>
@@ -604,7 +604,7 @@ const Onboarding = () => {
                                                         <div className="text-sm font-bold text-foreground">{d.label}</div>
                                                         {uploaded && (
                                                             <span
-                                                                className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider
+                                                                className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider
                                 ${doc?.status === "verified" ? "bg-green-500/10 text-green-600" : "bg-amber-500/10 text-amber-600"}`}
                                                             >
                                                                 {doc?.status_display}

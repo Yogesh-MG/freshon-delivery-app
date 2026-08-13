@@ -262,7 +262,7 @@ export const DeliveryMap = ({
           onClick={handleLocate}
           disabled={locating}
           aria-label="Show my location"
-          className="absolute bottom-3 left-3 z-[400] grid h-11 w-11 place-items-center rounded-full bg-card text-primary shadow-elevated ring-1 ring-border active:scale-95 disabled:opacity-60"
+          className="absolute bottom-3 left-3 z-[400] grid h-11 w-11 place-items-center rounded-full bg-card text-primary shadow-elevated ring-1 ring-border active:scale-95 disabled:opacity-60 tap-target"
         >
           {locating ? <Loader2 className="h-5 w-5 animate-spin" /> : <LocateFixed className="h-5 w-5" />}
         </button>

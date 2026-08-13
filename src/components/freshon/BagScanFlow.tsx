@@ -102,7 +102,7 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
         <>
             {/* Progress header */}
             <div className="rounded-3xl glass p-4 shadow-card-soft">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
                     <ScanLine className="h-3.5 w-3.5" /> Bag scan — hub handover
                 </div>
                 <div className="mt-1 text-lg font-extrabold tabular-nums text-foreground">

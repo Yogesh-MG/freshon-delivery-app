@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+/* Bundled with the build — never fetched at runtime. See fonts.css for why. */
+@import "./fonts.css";
 
 @tailwind base;
 @tailwind components;
@@ -64,6 +65,78 @@
     --glass-border: hsla(0, 0%, 100%, 0.5);
 
     --transition-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+    color-scheme: light;
+  }
+
+  /**
+   * Night shift.
+   *
+   * A large share of grocery delivery happens after dark, and the light palette
+   * is near-white at full brightness — painful to look at, ruinous for night
+   * vision between stops, and expensive on an OLED phone the rider also needs
+   * for navigation.
+   *
+   * Deliberately not an inversion. The ground is a deep slate rather than pure
+   * black: true black smears on OLED while riding and makes the green accent
+   * glare. The greens and ambers are lifted, because a colour tuned to sit on
+   * white goes muddy on dark; and `--muted-foreground` is raised well past its
+   * light-mode value, since low-contrast grey is exactly what fails first on a
+   * dimmed screen in the rain.
+   */
+  .dark {
+    --background: 215 28% 8%;
+    --foreground: 210 20% 96%;
+
+    --card: 215 25% 12%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 215 25% 12%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 142 58% 45%;
+    --primary-foreground: 215 30% 7%;
+    --primary-glow: 142 62% 55%;
+    --primary-soft: 142 38% 16%;
+
+    /* Stays a raised dark surface, as in light mode — it is used for inverted
+       chips and buttons, so flipping it would invert those twice. */
+    --secondary: 215 20% 20%;
+    --secondary-foreground: 210 20% 96%;
+
+    --muted: 215 20% 17%;
+    --muted-foreground: 215 15% 70%;
+
+    --accent: 38 90% 58%;
+    --accent-foreground: 215 30% 9%;
+    --accent-glow: 38 96% 66%;
+
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 215 30% 8%;
+
+    --success: 142 58% 46%;
+    --success-foreground: 215 30% 7%;
+
+    --border: 215 18% 22%;
+    --input: 215 18% 22%;
+    --ring: 142 58% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(142 58% 38%), hsl(142 52% 48%));
+    --gradient-amber: linear-gradient(135deg, hsl(38 88% 50%), hsl(28 90% 55%));
+    --gradient-slate: linear-gradient(160deg, hsl(215 24% 18%), hsl(215 28% 10%));
+    --gradient-fresh: linear-gradient(180deg, hsl(215 28% 10%), hsl(142 20% 12%));
+
+    /* Shadows read as depth on light grounds and as nothing on dark ones, so
+       they lean on a darker spread plus a hairline of light from the border. */
+    --shadow-glow-primary: 0 8px 30px -10px hsl(142 72% 20% / 0.75);
+    --shadow-glow-amber: 0 8px 30px -10px hsl(38 92% 24% / 0.7);
+    --shadow-card: 0 4px 24px -10px hsl(215 40% 2% / 0.7);
+    --shadow-elevated: 0 12px 40px -14px hsl(215 40% 2% / 0.85);
+
+    --glass-bg: hsla(215, 25%, 14%, 0.74);
+    --glass-border: hsla(0, 0%, 100%, 0.08);
+
+    color-scheme: dark;
   }
 }
 
@@ -98,6 +171,46 @@
        the body would push the full-height (h-dvh) shells past the viewport and
        clip their bottom behind the nav bar. */
   }
+  /* The same two glows, dropped to embers — enough to keep the ground from
+     reading as flat black, not enough to lift it. */
+  .dark body {
+    background:
+      radial-gradient(1200px 600px at 100% -10%, hsl(142 45% 12%) 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 100%, hsl(38 50% 11%) 0%, transparent 55%),
+      hsl(var(--background));
+  }
+
+  /**
+   * Riders set this so software stops moving under them. The app defines twelve
+   * keyframe animations — including a confetti burst that fires on every
+   * completed delivery, dozens of times a shift — and honoured the preference
+   * in exactly one place before this.
+   *
+   * Transitions are shortened rather than removed: an instant state change with
+   * no transition at all can read as a glitch.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /**
+   * Focus was suppressed app-wide by 56 uses of `outline-none` with nothing put
+   * back, which leaves a rider on switch access or a paired keyboard unable to
+   * see where they are. `:focus-visible` only paints for keyboard-style focus,
+   * so tapping a control still looks the way it always did.
+   */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
 }
 
 @layer components {
@@ -119,6 +232,31 @@
       linear-gradient(hsl(142 25% 88%) 1px, transparent 1px),
       linear-gradient(90deg, hsl(142 25% 88%) 1px, transparent 1px);
     background-size: 40px 40px;
+  }
+  .dark .map-grid {
+    background-color: hsl(215 26% 11%);
+    background-image:
+      linear-gradient(hsl(215 20% 17%) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(215 20% 17%) 1px, transparent 1px);
+  }
+
+  /**
+   * Minimum comfortable hit area. Icon buttons in this app are typically a 16px
+   * glyph with 6px of padding — about 28px, against the 44px both platforms
+   * recommend — and they are tapped in gloves, in the rain, on a bike. The
+   * pseudo-element grows the target without changing how the control looks.
+   */
+  .tap-target {
+    position: relative;
+  }
+  .tap-target::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
   }
 }
 
@@ -196,6 +334,14 @@
     100% { transform: scale(20); opacity: 0; }
   }
   .animate-ripple { animation: ripple 0.9s ease-out forwards; }
+
+  /* Sweep across the status toggle while going on/offline. Reads as "working"
+     from arm's length, where a 14px spinner does not. */
+  @keyframes status-sweep {
+    0%   { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .animate-status-sweep { animation: status-sweep 1.4s ease-in-out infinite; }
 
   /* Stroke-draw for any SVG path carrying pathLength="1". Normalizing the length
      in the markup means one rule draws any geometry correctly, instead of a

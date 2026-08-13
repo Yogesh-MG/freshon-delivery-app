@@ -66,10 +66,10 @@ export const QrScanner = ({
         <div className="fixed inset-0 z-[60] flex flex-col bg-secondary/95 backdrop-blur-sm">
             <div className="flex items-center justify-between px-5 pt-6 text-primary-foreground">
                 <div>
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-accent-glow">Pickup</div>
+                    <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent-glow">Pickup</div>
                     <div className="text-lg font-extrabold">{title}</div>
                 </div>
-                <button onClick={onCancel} className="rounded-full bg-white/10 p-2" aria-label="Close scanner">
+                <button onClick={onCancel} className="rounded-full bg-white/10 p-2 tap-target" aria-label="Close scanner">
                     <X className="h-5 w-5" />
                 </button>
             </div>

@@ -152,7 +152,7 @@ const SoundDemo = () => {
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 shrink-0 text-primary" />
                 <span className="text-sm font-bold text-foreground">{label}</span>
-                <code className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
+                <code className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[11px] font-bold text-muted-foreground">
                   {cue}
                 </code>
               </div>

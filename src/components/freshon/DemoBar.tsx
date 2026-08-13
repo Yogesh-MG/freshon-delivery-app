@@ -95,7 +95,7 @@ export const DemoBar = () => {
   return (
     <div className="fixed bottom-3 left-3 z-[100] w-60 rounded-2xl bg-black/80 p-3 text-white shadow-xl ring-1 ring-white/10 backdrop-blur">
       <div className="flex items-start justify-between">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300">
           <FlaskConical className="h-3.5 w-3.5" /> Demo mode
         </div>
         <button onClick={() => setOpen(false)} aria-label="Close" className="rounded-full p-1 hover:bg-white/10">
@@ -133,10 +133,10 @@ export const DemoBar = () => {
           shapes, since everything is auth-gated and there's no public schema. */}
       <div className="mt-3 border-t border-white/10 pt-2.5">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/50">
             API capture
           </div>
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-black text-white/70">
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-black text-white/70">
             {apiCount}
           </span>
         </div>
@@ -155,7 +155,7 @@ export const DemoBar = () => {
           the phone, wake it: the persistent notification and location loop
           should still be running. */}
       <div className="mt-3 border-t border-white/10 pt-2.5">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">
+        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/50">
           Background test
         </div>
         <button
@@ -173,7 +173,7 @@ export const DemoBar = () => {
           {bgRunning ? <Square className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
           {bgRunning ? "Stop delivery-in-progress" : "Start delivery-in-progress"}
         </button>
-        <p className="mt-1.5 text-[10px] leading-snug text-white/45">
+        <p className="mt-1.5 text-[11px] leading-snug text-white/45">
           Start it, then lock the phone. The persistent notification should stay
           and location keeps reporting until you stop it.
         </p>
@@ -182,7 +182,7 @@ export const DemoBar = () => {
       {/* What the API actually returned for a drop-off. The endpoints are
           auth-gated, so this is the only place the payload shape is visible. */}
       <div className="mt-3 border-t border-white/10 pt-2.5">
-        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">
+        <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/50">
           <Phone className="h-3 w-3" /> Drop-off payload
         </div>
         {!probe ? (
@@ -196,7 +196,7 @@ export const DemoBar = () => {
             >
               {probe.phone ? `Number: ${probe.phone}` : "No contact number in payload"}
             </div>
-            <div className="mt-1 max-h-24 overflow-y-auto break-words text-[10px] leading-snug text-white/45">
+            <div className="mt-1 max-h-24 overflow-y-auto break-words text-[11px] leading-snug text-white/45">
               <span className="text-white/30">{probe.source} keys: </span>
               {probe.keys.join(", ")}
             </div>

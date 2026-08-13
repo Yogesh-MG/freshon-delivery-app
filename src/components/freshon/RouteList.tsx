@@ -68,7 +68,7 @@ export const RouteList = ({
               className="min-w-0 flex-1 text-left disabled:cursor-default"
             >
               <div className="flex items-center gap-2">
-                <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider
+                <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold uppercase tracking-wider
                   ${isPickup ? "bg-accent/15 text-accent" : "bg-primary/10 text-primary"}`}>
                   {isPickup ? "Pickup" : "Drop"}
                 </span>

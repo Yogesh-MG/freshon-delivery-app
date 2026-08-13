@@ -53,7 +53,7 @@ export const TripPreview = ({
 
                 <div className="flex items-start justify-between gap-3 px-5 pt-2">
                     <div className="min-w-0">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-amber px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-foreground shadow-glow-amber">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-amber px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow-glow-amber">
                             <Package className="h-3 w-3" /> {isBatch ? `Batch · ${dropoffs.length} stops` : "Single order"}
                         </span>
                         <div className="mt-1.5 flex items-baseline gap-0.5">
@@ -64,7 +64,7 @@ export const TripPreview = ({
                             <span className="ml-1 text-xs text-muted-foreground">estimated</span>
                         </div>
                     </div>
-                    <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted" aria-label="Close">
+                    <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted tap-target" aria-label="Close">
                         <X className="h-4 w-4" />
                     </button>
                 </div>
@@ -73,7 +73,7 @@ export const TripPreview = ({
                     {/* Distance breakdown — the whole point of the preview: where the
               kilometres actually go, including the ride to the hub. */}
                     <div className="rounded-2xl bg-muted/60 p-4">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                             Distance you'll ride
                         </div>
                         <div className="mt-2 space-y-1.5 text-sm">
@@ -120,14 +120,14 @@ export const TripPreview = ({
                                 <Store className="h-4 w-4" />
                             </div>
                             <div className="min-w-0">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-accent">Pick up from</div>
+                                <div className="text-[11px] font-bold uppercase tracking-wider text-accent">Pick up from</div>
                                 <div className="truncate text-sm font-bold text-foreground">{trip.hub.label}</div>
                                 <div className="text-xs text-muted-foreground">{trip.hub.address}</div>
                             </div>
                         </div>
                     )}
 
-                    <div className="mt-4 mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                    <div className="mt-4 mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
                         {dropoffs.length === 1 ? "Drop-off" : `${dropoffs.length} drop-offs · optimized order`}
                     </div>
                     <div className="space-y-2">
@@ -169,7 +169,7 @@ export const TripPreview = ({
                                                 </span>
                                             )}
                                             {stop.order_id && (
-                                                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                                                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
                                                     {stop.order_id}
                                                 </span>
                                             )}
@@ -182,7 +182,7 @@ export const TripPreview = ({
                                                         <span className="truncate text-foreground">
                                                             {item.qty}× {item.name}
                                                             {item.fragile && (
-                                                                <span className="ml-1 rounded bg-accent/15 px-1 py-0.5 text-[9px] font-bold text-accent">
+                                                                <span className="ml-1 rounded bg-accent/15 px-1 py-0.5 text-[11px] font-bold text-accent">
                                                                     FRAGILE
                                                                 </span>
                                                             )}
@@ -247,6 +247,6 @@ const Metric = ({ icon, label, value }: { icon: React.ReactNode; label: string; 
     <div className="rounded-2xl bg-muted/60 p-3">
         <div className="flex items-center gap-1.5 text-muted-foreground">{icon}</div>
         <div className="mt-1 text-sm font-extrabold text-foreground">{value}</div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
     </div>
 );

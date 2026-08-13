@@ -27,11 +27,11 @@ export const EarningsHeader = ({ stats }: { stats: EarningsStats }) => {
             </defs>
           </svg>
           <div className="absolute inset-0 grid place-items-center">
-            <div className="text-[10px] font-bold text-primary">{Math.round(pct)}%</div>
+            <div className="text-[11px] font-bold text-primary">{Math.round(pct)}%</div>
           </div>
         </div>
         <div className="flex-1">
-          <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Today's Earnings</div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Today's Earnings</div>
           <div className="mt-0.5 flex items-baseline gap-2">
             <div className="text-3xl font-extrabold tracking-tight tabular-nums text-foreground">₹{earnings.toFixed(2)}</div>
             <div className="text-xs tabular-nums text-muted-foreground">/ ₹{goal}</div>

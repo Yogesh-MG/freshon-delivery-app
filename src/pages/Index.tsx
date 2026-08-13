@@ -140,6 +140,8 @@ const Index = () => {
   const { offeredTrip, claimTrip, dismissOffer } = useDeliverySocket(wsToken);
 
   const [online, setOnline] = useState(false);
+  // Covers the whole go-online sequence: permissions, GPS fix, status write, fetch.
+  const [statusPending, setStatusPending] = useState(false);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [activeAssignmentId, setActiveAssignmentId] = useState<string | null>(null);
   const [completedStopIds, setCompletedStopIds] = useState<Set<string>>(new Set());
@@ -433,6 +435,12 @@ const Index = () => {
     // POST_NOTIFICATIONS and location prompts. Ask for both here, and hard-block
     // going online if either is refused: without location the rider can't be
     // routed or tracked, and without notifications they'd silently miss offers.
+    // Everything from here can take seconds — two permission prompts, a GPS fix
+    // with an 8s ceiling, the status write, then the dashboard fetch. The toggle
+    // showed none of it, so the rider's tap looked ignored. Held until the data
+    // is actually on screen, not just until the request returns.
+    setStatusPending(true);
+    try {
     if (nextOnline) {
       const [notifyOk, locationOk] = await Promise.all([
         requestNotificationPermission(),
@@ -468,7 +476,13 @@ const Index = () => {
       return;
     }
     play("tick");
-    if (nextOnline) refreshDashboard();
+    // Awaited, unlike before: the fetch is the slowest part and the one the
+    // rider is actually waiting on, so the toggle stays busy until the missions
+    // are on screen rather than going idle over an empty list.
+    if (nextOnline) await refreshDashboard();
+    } finally {
+      setStatusPending(false);
+    }
   };
 
   const acceptMission = async (mission: Assignment) => {
@@ -688,10 +702,10 @@ const Index = () => {
             <Wordmark />
             {(trip || activeMission) && (
               <div className="mt-5 flex items-center justify-between gap-3">
-                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-foreground">
+                <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
                   {trip ? "Trip" : activeMission!.service}
                 </span>
-                <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-primary">
+                <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
                   {(trip ? trip.status : activeMission!.status).replace(/_/g, " ")}
                 </span>
               </div>
@@ -725,7 +739,7 @@ const Index = () => {
               {!hasActiveWork && (
                 <>
                   {isVerified ? (
-                    <StatusToggle online={online} onChange={updateOnline} />
+                    <StatusToggle online={online} pending={statusPending} onChange={updateOnline} />
                   ) : (
                     <VerificationGate verification={verification} onOpen={() => navigate("/onboarding")} />
                   )}
@@ -954,7 +968,7 @@ const AvailableTripsList = ({
         >
           Single
           {single.length > 0 && (
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none ${
+            <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-black leading-none ${
               tab === "single" ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
             }`}>
               {single.length}
@@ -971,7 +985,7 @@ const AvailableTripsList = ({
         >
           Batch
           {batch.length > 0 && (
-            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-black leading-none ${
+            <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-black leading-none ${
               tab === "batch" ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
             }`}>
               {batch.length}
@@ -1073,7 +1087,7 @@ const BatchTripCard = ({
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-amber px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-foreground shadow-glow-amber">
+          <span className="inline-flex items-center gap-1 rounded-full bg-gradient-amber px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow-glow-amber">
             <Package className="h-3 w-3" /> {dropoffs.length} stops
           </span>
           <div className="mt-1.5 text-xs text-muted-foreground">{trip.hub?.label || "Hub"}</div>
@@ -1085,7 +1099,7 @@ const BatchTripCard = ({
               {trip.earnings != null ? Number(trip.earnings).toFixed(0) : "—"}
             </span>
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">estimated</div>
+          <div className="text-[11px] text-muted-foreground mt-0.5">estimated</div>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">

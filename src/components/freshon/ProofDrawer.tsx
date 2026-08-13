@@ -89,14 +89,14 @@ const StepHeader = ({ step }: { step: 1 | 2 }) => (
     {([1, 2] as const).map((n) => (
       <div key={n} className="flex flex-1 items-center gap-1.5">
         <span
-          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] font-black ${
+          className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-black ${
             n <= step ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
           }`}
         >
           {n}
         </span>
         <span
-          className={`text-[10px] font-bold uppercase tracking-[0.14em] ${
+          className={`text-[11px] font-bold uppercase tracking-[0.14em] ${
             n === step ? "text-foreground" : "text-muted-foreground"
           }`}
         >
@@ -121,7 +121,7 @@ const CustomerContact = ({ stop }: { stop: Stop }) => {
   return (
     <div className="flex items-center justify-between gap-3 rounded-2xl bg-muted/60 px-4 py-3">
       <div className="min-w-0">
-        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
           Can't find the address?
         </div>
         <div className="truncate text-sm font-bold text-foreground">{name}</div>
@@ -402,7 +402,7 @@ export const ProofDrawer = ({
         <div className="flex justify-center pt-3"><div className="h-1.5 w-12 rounded-full bg-border" /></div>
         <div className="flex items-start justify-between px-5 pt-2">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">{stop.type === "pickup" ? "Pickup · Hub" : "Drop-off"}</div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{stop.type === "pickup" ? "Pickup · Hub" : "Drop-off"}</div>
             <div className="text-xl font-extrabold text-foreground">{stop.label}</div>
             <div className="text-xs text-muted-foreground">{stop.address}</div>
             {stop.latitude != null && stop.longitude != null && (
@@ -416,7 +416,7 @@ export const ProofDrawer = ({
               </button>
             )}
           </div>
-          <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted" aria-label="Close">
+          <button onClick={onClose} className="rounded-full p-2 text-muted-foreground hover:bg-muted tap-target" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>

@@ -8,7 +8,7 @@ export const FreshOnLogo = ({ className = "" }: { className?: string }) => (
     </div>
     <div className="leading-tight">
       <div className="font-extrabold tracking-tight text-foreground">FreshOn<span className="text-primary"> Go</span></div>
-      <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Partner</div>
+      <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Partner</div>
     </div>
   </div>
 );
