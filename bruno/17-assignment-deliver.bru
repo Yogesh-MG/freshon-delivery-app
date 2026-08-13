@@ -23,12 +23,19 @@ body:json {
     "otp_code": "123456",
     "latitude": {{lat}},
     "longitude": {{lng}},
-    "cod_collected": false
+    "accuracy_m": 25
   }
 }
 
 docs {
-  type is "otp" or "photo". For "photo", upload via request 21 first and omit otp_code.
-  cod_collected is sent by the app but the backend does not persist it yet
-  (see deliveryAssignmentService.ts).
+  Happy-path stop close. Round-two contract:
+  - `type` is REQUIRED and must be "otp" or "photo". Absent/unknown → 400
+    (VALIDATION_ERROR / INVALID_TYPE). See round2/ for those cases.
+  - `stop_id` is REQUIRED and must belong to THIS assignment (else 400 STOP_MISMATCH).
+  - For "photo": upload via request 21 first, set "photo_captured": true and omit otp_code.
+  - `accuracy_m` (optional) is the GPS fix error; the server widens the geofence by it
+    (capped +150m) so a poor urban fix doesn't lock you out at the door.
+  - A correct code that then fails the geofence is NOT consumed — move closer and retry.
+  - COD is withdrawn: do not send cod_collected / cod_amount (the app no longer does).
+  - Idempotent: replaying a completed delivery returns 200 {already_delivered:true}.
 }

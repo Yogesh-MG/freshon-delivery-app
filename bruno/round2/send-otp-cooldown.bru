@@ -1,0 +1,38 @@
+meta {
+  name: R9 Login OTP — cooldown vs resend-limit (B4)
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/auth/send-otp/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+}
+
+body:json {
+  {
+    "phone": "{{phone}}"
+  }
+}
+
+assert {
+  res.body.error_code: isDefined
+}
+
+docs {
+  B4 — two distinct throttle states that used to be conflated:
+  - Fire this TWICE within 30s → the second is 429 with error_code OTP_COOLDOWN and NO
+    second SMS is sent. Waiting the cooldown then retrying succeeds (§10.13).
+  - Keep going until the hourly allowance is spent → 429 error_code OTP_RESEND_LIMIT,
+    and Retry-After is the TRUE window reset (not the 30s cooldown that never clears it)
+    (§10.14).
+  - An unregistered number returns the SAME shape (no rider-enumeration oracle) (§10.15).
+  Note: on the first (allowed) call the response is 200 with cooldown_seconds /
+  resends_remaining and has no error_code — so this assert only holds on a throttled call.
+}

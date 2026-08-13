@@ -1,0 +1,36 @@
+meta {
+  name: R8 Withdraw — same key does not double-pay (§8)
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/wallet/withdraw/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "amount": 200,
+    "method": "UPI",
+    "idempotency_key": "bruno-fixed-key-001"
+  }
+}
+
+assert {
+  res.body.id: isDefined
+}
+
+docs {
+  §8 / §10.9 — run this TWICE with the SAME idempotency_key. Both responses carry the
+  SAME withdrawal `id`; the balance is debited only once (no second hold). This guards
+  the lost-response double-tap: rider requests ₹200, the response dies, they retry.
+  Requires a matured available balance >= amount and saved UPI details (profile 23).
+}

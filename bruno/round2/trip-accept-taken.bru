@@ -1,0 +1,29 @@
+meta {
+  name: R7 Trip — accepting another rider's trip (B3)
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{takenTripId}}/accept/
+  body: none
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+assert {
+  res.status: eq 409
+  res.body.error_code: eq TRIP_TAKEN
+}
+
+docs {
+  B3 — a trip already held by ANOTHER rider returns 409 TRIP_TAKEN (was a code-less 400).
+  Re-accepting your OWN trip is idempotent and NEVER rewinds an ACTIVE trip to ASSIGNED
+  (which used to discard the hub pickup + bag scans). Set {{takenTripId}} to a trip owned
+  by a different rider.
+}

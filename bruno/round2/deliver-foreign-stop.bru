@@ -1,0 +1,36 @@
+meta {
+  name: R3 Deliver — stop from another assignment (B2)
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/deliver/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "stop_id": "{{foreignStopId}}",
+    "type": "otp",
+    "otp_code": "123456"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error_code: eq STOP_MISMATCH
+}
+
+docs {
+  B2 / §10.3 — a stop_id that does NOT belong to {{assignmentId}} must be rejected,
+  not silently ignored and applied to this assignment's own dropoff. Set
+  {{foreignStopId}} to a stop UUID from a DIFFERENT trip/assignment.
+}

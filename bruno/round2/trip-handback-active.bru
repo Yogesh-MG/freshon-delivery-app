@@ -1,0 +1,35 @@
+meta {
+  name: R6 Trip — hand back an ACTIVE trip (B5)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/trips/{{tripId}}/cancel/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "reason": "bike broke down"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.returned_orders: isDefined
+}
+
+docs {
+  B5 / §10.16 — cancel/ must now work from ACTIVE (bike broke down, injury, emergency),
+  not only ASSIGNED. Undelivered orders return to the pool (bag-scan cleared), delivered
+  ones stay delivered, and the trip is flagged for ops. {{tripId}} must be a trip this
+  rider is holding in ACTIVE state. From ASSIGNED it returns the whole trip to the pool.
+}

@@ -1,0 +1,40 @@
+meta {
+  name: R4 Deliver — correct OTP but too far (§3 geofence)
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/deliver/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "stop_id": "{{stopId}}",
+    "type": "otp",
+    "otp_code": "{{deliveryOtp}}",
+    "latitude": 13.2000,
+    "longitude": 77.7000
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error_code: eq OUTSIDE_GEOFENCE
+  res.body.distance_m: isDefined
+}
+
+docs {
+  §10.11 — a correct code from far away returns OUTSIDE_GEOFENCE with distance_m, and
+  must NOT burn an OTP attempt or consume the code. Set {{deliveryOtp}} to the real
+  code and the coords well away from the drop. Then re-send request 17 from the door:
+  the SAME code should still verify (proving it was not consumed here).
+}

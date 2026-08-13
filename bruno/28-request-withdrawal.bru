@@ -19,7 +19,8 @@ headers {
 body:json {
   {
     "amount": 500,
-    "method": "UPI"
+    "method": "UPI",
+    "idempotency_key": "{{idempotencyKey}}"
   }
 }
 
@@ -29,4 +30,9 @@ vars:pre-request {
 
 docs {
   method: UPI | BANK — must match the payout details saved on the profile (23).
+
+  idempotency_key (round two, §8): a lost response must not turn one tap into two
+  payouts. Send a fresh unique key per real request; re-sending the SAME key from the
+  SAME rider returns the ORIGINAL withdrawal and does not debit again. See
+  round2/withdraw-idempotent for the repeat-key assertion.
 }

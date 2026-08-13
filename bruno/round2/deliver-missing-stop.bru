@@ -1,0 +1,35 @@
+meta {
+  name: R2 Deliver — missing stop_id is a validation error (B6)
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/deliver/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "type": "otp",
+    "otp_code": "123456"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error_code: eq VALIDATION_ERROR
+}
+
+docs {
+  B6 / §10.4 — a malformed request (no stop_id) must be VALIDATION_ERROR, NEVER
+  OTP_EXPIRED. Required-field checks run before any OTP logic (§0.2).
+  Sending `type` absent should likewise return VALIDATION_ERROR (not INVALID_TYPE).
+}

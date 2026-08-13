@@ -1,0 +1,38 @@
+meta {
+  name: R5 Deliver — replay is idempotent (§3)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/deliver/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "stop_id": "{{stopId}}",
+    "type": "otp",
+    "otp_code": "{{deliveryOtp}}",
+    "latitude": {{lat}},
+    "longitude": {{lng}}
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  §10.5 — run this TWICE with the same body. The first call completes (200); the
+  second (a replayed/lost-response retry) returns 200 with {already_delivered:true},
+  and does NOT credit earnings again or notify the customer twice. First run needs a
+  valid {{deliveryOtp}} and to be inside the geofence; the replay ignores the code.
+}

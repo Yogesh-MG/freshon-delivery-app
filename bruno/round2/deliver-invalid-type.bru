@@ -1,0 +1,35 @@
+meta {
+  name: R1 Deliver — unknown type rejected (B1)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/delivery-partner/assignments/{{assignmentId}}/deliver/
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-App-Platform: DeliveryApp
+  Authorization: Bearer {{deviceKey}}
+}
+
+body:json {
+  {
+    "stop_id": "{{stopId}}",
+    "type": "banana",
+    "otp_code": "123456"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.error_code: eq INVALID_TYPE
+}
+
+docs {
+  B1 / §10.1 — an unrecognised `type` must be rejected and write NOTHING. Round one
+  returned 200 here and silently closed the stop. Nothing should be recorded.
+}
