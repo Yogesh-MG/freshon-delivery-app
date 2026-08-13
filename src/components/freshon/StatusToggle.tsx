@@ -61,8 +61,8 @@ export const StatusToggle = ({
             aria-label={online ? "Go offline" : "Go online"}
             className={`relative w-full overflow-hidden rounded-3xl p-5 text-left transition-all duration-500
         ${online
-                    ? "bg-primary text-primary-foreground shadow-glow-primary"
-                    : "glass-dark text-primary-foreground"}
+                    ? "bg-primary text-primary-foreground"
+                    : "glass-dark text-secondary-foreground"}
         ${online && !pending ? "animate-glow-pulse" : ""}
         ${pending ? "cursor-wait opacity-95" : ""}`}
         >
@@ -104,7 +104,7 @@ export const StatusToggle = ({
                         <Loader2 className="h-6 w-6 animate-spin text-white" />
                     ) : (
                         <div
-                            className={`h-3 w-3 rounded-full ${online ? "bg-accent shadow-glow-amber animate-amber-pulse" : "bg-white/50"}`}
+                            className={`h-3 w-3 rounded-full ${online ? "bg-accent animate-amber-pulse" : "bg-white/50"}`}
                         />
                     )}
                 </div>

@@ -271,7 +271,7 @@ export const DeliveryMap = ({
         <button
           type="button"
           onClick={() => openInGoogleMaps(navTarget)}
-          className="absolute bottom-3 right-3 z-[400] flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-glow-primary active:scale-95"
+          className="absolute bottom-3 right-3 z-[400] flex items-center gap-1.5 rounded-full bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground active:scale-95"
         >
           <Navigation className="h-4 w-4" /> Navigate
         </button>

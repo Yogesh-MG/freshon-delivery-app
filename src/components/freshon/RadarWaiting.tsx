@@ -22,7 +22,7 @@ export const RadarWaiting = ({ count = 0 }: { count?: number }) => {
         <div className="relative overflow-hidden rounded-3xl glass p-6 text-center shadow-card-soft">
             <div className="relative mx-auto h-32 w-32">
                 <div className="absolute inset-0 grid place-items-center">
-                    <div className="h-3 w-3 rounded-full bg-primary shadow-glow-primary" />
+                    <div className="h-3 w-3 rounded-full bg-primary" />
                 </div>
                 {[0, 0.6, 1.2].map((d, i) => (
                     <div
@@ -34,7 +34,7 @@ export const RadarWaiting = ({ count = 0 }: { count?: number }) => {
                 {blips.map((p, i) => (
                     <span
                         key={i}
-                        className="absolute h-2.5 w-2.5 rounded-full bg-primary shadow-glow-primary animate-blip"
+                        className="absolute h-2.5 w-2.5 rounded-full bg-primary animate-blip"
                         style={{ left: `${p.x}%`, top: `${p.y}%`, animationDelay: `${i * 0.35}s` }}
                     />
                 ))}

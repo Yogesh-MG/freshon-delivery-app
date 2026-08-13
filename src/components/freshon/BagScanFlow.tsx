@@ -171,7 +171,7 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
                                     disabled={busy}
                                     aria-label={`Scan bag for ${stop.order_id || stop.label}`}
                                     className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition active:scale-95 disabled:opacity-50 ${isNext
-                                        ? "bg-primary text-primary-foreground shadow-glow-primary"
+                                        ? "bg-primary text-primary-foreground"
                                         : "bg-muted text-muted-foreground"
                                         }`}
                                 >
@@ -189,7 +189,7 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
                 <button
                     onClick={() => setScanningStop(nextUnscanned)}
                     disabled={busy || !nextUnscanned}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.99] disabled:opacity-50"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-sm font-bold text-primary-foreground transition active:scale-[0.99] disabled:opacity-50"
                 >
                     <ScanLine className="h-4 w-4" />
                     {scannedCount + 1 === dropoffs.length
@@ -200,7 +200,7 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
                 <button
                     onClick={confirmPickup}
                     disabled={busy}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-60"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground disabled:opacity-60"
                 >
                     <CheckCircle2 className="h-4 w-4" />
                     Retry hub handover ({dropoffs.length} orders)

@@ -17,8 +17,6 @@ export default {
         sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'glow-primary': 'var(--shadow-glow-primary)',
-        'glow-amber': 'var(--shadow-glow-amber)',
         'card-soft': 'var(--shadow-card)',
         'elevated': 'var(--shadow-elevated)',
       },

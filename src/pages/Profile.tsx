@@ -203,9 +203,8 @@ const Profile = () => {
                         ) : profile ? (
                             <>
                                 {/* Profile Card */}
-                                <div className="relative overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground shadow-glow-primary">
+                                <div className="relative overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground">
                                     {/* Soft highlight so the flat fill reads as a surface. */}
-                                    <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
                                     <div className="relative flex items-center gap-4">
                                         <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-white/20 ring-1 ring-white/25 backdrop-blur">
                                             <User className="h-8 w-8" />
@@ -266,7 +265,7 @@ const Profile = () => {
                                                                 type="button"
                                                                 onClick={() => setEditForm({ ...editForm, vehicle_type: type })}
                                                                 className={`flex min-h-[62px] flex-col items-center justify-center gap-1.5 rounded-2xl p-2.5 text-[11px] font-bold transition active:scale-95
-                                  ${active ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-muted text-muted-foreground"}`}
+                                  ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                                                             >
                                                                 <Icon className="h-5 w-5" /> {VEHICLE_NAMES[type]}
                                                             </button>
@@ -338,7 +337,7 @@ const Profile = () => {
                                                 <button
                                                     onClick={handleSave}
                                                     disabled={saving}
-                                                    className="flex-1 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.98] disabled:opacity-50"
+                                                    className="flex-1 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground transition active:scale-[0.98] disabled:opacity-50"
                                                 >
                                                     {saving ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Save"}
                                                 </button>
@@ -399,7 +398,7 @@ const Profile = () => {
                                                             type="button"
                                                             onClick={() => setPayoutForm({ ...payoutForm, payout_method: m })}
                                                             className={`flex min-h-[44px] items-center justify-center gap-2 rounded-2xl p-2 text-sm font-bold transition active:scale-95
-                                ${active ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-muted text-muted-foreground"}`}
+                                ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                                                         >
                                                             <Icon className="h-4 w-4" /> {m === "UPI" ? "UPI" : "Bank account"}
                                                         </button>
@@ -489,7 +488,7 @@ const Profile = () => {
                                                 <button
                                                     onClick={handleSavePayout}
                                                     disabled={savingPayout}
-                                                    className="flex-1 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.98] disabled:opacity-50"
+                                                    className="flex-1 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground transition active:scale-[0.98] disabled:opacity-50"
                                                 >
                                                     {savingPayout ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Save"}
                                                 </button>
@@ -552,7 +551,7 @@ const Profile = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <span className="flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-bold text-primary-foreground shadow-glow-primary">
+                                    <span className="flex shrink-0 items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2.5 text-xs font-bold text-primary-foreground">
                                         <Phone className="h-3.5 w-3.5" /> Call
                                     </span>
                                 </button>
@@ -574,7 +573,7 @@ const Profile = () => {
                                                 onClick={() => chooseTheme(option.value)}
                                                 className={`rounded-xl py-2.5 text-xs font-bold transition ${
                                                     theme === option.value
-                                                        ? "bg-primary text-primary-foreground shadow-glow-primary"
+                                                        ? "bg-primary text-primary-foreground"
                                                         : "bg-muted text-muted-foreground"
                                                 }`}
                                             >

@@ -214,7 +214,7 @@ const Auth = () => {
         .btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           height: 56px; border-radius: 16px; padding: 0 20px;
           background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
-          font-size: 15px; font-weight: 700; box-shadow: var(--shadow-glow-primary);
+          font-size: 15px; font-weight: 700; box-shadow: var(--);
           transition: transform .15s; }
         .btn-primary:hover:not(:disabled) { transform: scale(1.01); }
         .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
@@ -289,7 +289,7 @@ const DeliveryBackdrop = () => (
 // The glyph has no intrinsic size, so the tile is what sizes it.
 const BikeMark = () => (
     <div className="flex flex-col items-center gap-3">
-        <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-primary shadow-glow-primary">
+        <div className="grid h-20 w-20 place-items-center rounded-[26px] bg-primary">
             <Motorbike className="h-10 w-10 text-primary-foreground" />
         </div>
         <Wordmark size="lg" />

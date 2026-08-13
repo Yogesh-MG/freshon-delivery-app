@@ -53,7 +53,7 @@ export const TripPreview = ({
 
                 <div className="flex items-start justify-between gap-3 px-5 pt-2">
                     <div className="min-w-0">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow-glow-amber">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground">
                             <Package className="h-3 w-3" /> {isBatch ? `Batch · ${dropoffs.length} stops` : "Single order"}
                         </span>
                         <div className="mt-1.5 flex items-baseline gap-0.5">
@@ -207,7 +207,7 @@ export const TripPreview = ({
                     <button
                         onClick={accept}
                         disabled={busy || accepting}
-                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.99] disabled:opacity-60"
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-4 text-sm font-bold text-primary-foreground transition active:scale-[0.99] disabled:opacity-60"
                     >
                         {busy || accepting ? (
                             <Loader2 className="h-4 w-4 animate-spin" />

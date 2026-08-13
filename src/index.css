@@ -50,8 +50,6 @@
 
 
     /* Shadows */
-    --shadow-glow-primary: 0 8px 30px -8px hsl(142 72% 29% / 0.45);
-    --shadow-glow-amber: 0 8px 30px -8px hsl(38 92% 50% / 0.55);
     --shadow-card: 0 4px 24px -8px hsl(215 25% 27% / 0.12);
     --shadow-elevated: 0 12px 40px -12px hsl(215 25% 27% / 0.25);
 
@@ -119,8 +117,6 @@
 
     /* Shadows read as depth on light grounds and as nothing on dark ones, so
        they lean on a darker spread plus a hairline of light from the border. */
-    --shadow-glow-primary: 0 8px 30px -10px hsl(142 72% 20% / 0.75);
-    --shadow-glow-amber: 0 8px 30px -10px hsl(38 92% 24% / 0.7);
     --shadow-card: 0 4px 24px -10px hsl(215 40% 2% / 0.7);
     --shadow-elevated: 0 12px 40px -14px hsl(215 40% 2% / 0.85);
 
@@ -270,8 +266,8 @@
   .animate-blip { animation: blip 2s ease-in-out infinite; }
 
   @keyframes glow-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.55), var(--shadow-glow-primary); }
-    50%      { box-shadow: 0 0 0 14px hsl(var(--primary) / 0), var(--shadow-glow-primary); }
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.5); }
+    50%      { box-shadow: 0 0 0 12px hsl(var(--primary) / 0); }
   }
   .animate-glow-pulse { animation: glow-pulse 2.2s ease-out infinite; }
 

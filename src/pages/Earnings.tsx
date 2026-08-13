@@ -113,10 +113,9 @@ const Earnings = () => {
 
                         {/* Wallet */}
                         {wallet && (
-                            <div className="relative overflow-hidden rounded-3xl bg-secondary p-5 text-primary-foreground shadow-elevated">
+                            <div className="relative overflow-hidden rounded-3xl bg-secondary p-5 text-secondary-foreground shadow-elevated">
                                 {/* Same soft highlight the profile hero uses, so the two
                                     full-bleed cards read as one family. */}
-                                <div className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-accent/20 blur-2xl" />
                                 <div className="relative">
                                     <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] opacity-80">
                                         <Wallet className="h-3.5 w-3.5" /> Wallet balance
@@ -137,7 +136,7 @@ const Earnings = () => {
                                     <button
                                         onClick={() => setShowWithdraw(true)}
                                         disabled={parseFloat(wallet.available) <= 0}
-                                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary transition active:scale-[0.99] disabled:opacity-50"
+                                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3.5 text-sm font-bold text-primary-foreground transition active:scale-[0.99] disabled:opacity-50"
                                     >
                                         <ArrowDownToLine className="h-4 w-4" /> Withdraw
                                     </button>
@@ -405,7 +404,7 @@ const WithdrawSheet = ({
                                     <button
                                         type="button"
                                         onClick={() => setMethod("UPI")}
-                                        className={`flex min-h-[56px] flex-col items-start justify-center gap-0.5 rounded-2xl p-3 text-left transition ${method === "UPI" ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-muted text-muted-foreground"}`}
+                                        className={`flex min-h-[56px] flex-col items-start justify-center gap-0.5 rounded-2xl p-3 text-left transition ${method === "UPI" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                                     >
                                         <span className="flex items-center gap-1 text-xs font-bold"><IndianRupee className="h-3.5 w-3.5" /> UPI</span>
                                         <span className="truncate text-[11px] opacity-90">{profile?.bank_upi}</span>
@@ -415,7 +414,7 @@ const WithdrawSheet = ({
                                     <button
                                         type="button"
                                         onClick={() => setMethod("BANK")}
-                                        className={`flex min-h-[56px] flex-col items-start justify-center gap-0.5 rounded-2xl p-3 text-left transition ${method === "BANK" ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-muted text-muted-foreground"}`}
+                                        className={`flex min-h-[56px] flex-col items-start justify-center gap-0.5 rounded-2xl p-3 text-left transition ${method === "BANK" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
                                     >
                                         <span className="flex items-center gap-1 text-xs font-bold"><Landmark className="h-3.5 w-3.5" /> Bank</span>
                                         <span className="truncate text-[11px] opacity-90">••• {profile?.bank_account_number.slice(-4)}</span>
@@ -426,7 +425,7 @@ const WithdrawSheet = ({
                             <button
                                 onClick={submit}
                                 disabled={busy || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > available || !method}
-                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-glow-primary disabled:opacity-50"
+                                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-50"
                             >
                                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowDownToLine className="h-4 w-4" />}
                                 Request withdrawal

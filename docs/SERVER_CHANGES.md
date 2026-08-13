@@ -1,450 +1,459 @@
-# Server-side changes required by the FreshOn rider app
+# FreshOn delivery API — required changes
 
-**Audience:** whoever is working on the FreshOn backend (the Django/DRF service behind
-`https://api.freshon.in`). This document is self-contained — you should not need the rider
-app's source to act on it.
+**For whoever is implementing this on the backend (Django/DRF behind `https://api.freshon.in`).**
+Self-contained: you should not need the rider app's source.
 
-**Status of the client:** every field described below is **already being sent by the
-shipped rider app**. Each change here is the server half of a fix whose client half is
-done. Until you make these changes the fields cross the wire and are silently dropped, and
-the behaviours they enable stay broken.
+This is **round two**. Round one was partly implemented and partly wrong, and the wrong
+parts were found by testing the live API with a real rider account. § 1 lists exactly what
+broke, because two of those bugs are worse than the problems they were meant to fix.
 
-**How to read the priorities:** S1 and S7 fix cases where a rider is left stuck or
-misinformed by a response they cannot act on — start there. S2, S3 and S5 are evidence
-integrity: whether a delivery's proof can be trusted after the fact. S4 and S6 are
-abuse-control on the two OTP endpoints.
-
-**On cash on delivery:** an earlier draft of this document asked for COD persistence, a
-`cod_amount` on stop payloads, and a rider cash balance to reconcile against. **Those are
-withdrawn.** The rider app no longer collects cash — it sends no COD fields at all, so
-there is nothing for the server to record. If COD returns to the app, that work returns
-with it; do not build it speculatively.
+Read § 0 and § 1 before writing any code.
 
 ---
 
-## 0. Ground rules
+## 0. Rules that apply to every change here
 
-### 0.1 Backward compatibility is mandatory
+### 0.1 Never let an unknown value take a success path
 
-Riders run whatever build is on their phone. Old versions will be in the field for weeks
-after you deploy.
+This is the single most important line in this document. The critical bug in round one
+(**B1**) was a branch on `type` with no rejecting `else`, so an unrecognised value fell
+through every check and returned `200`.
 
-- **Every new request field must be optional.** An old client omits all of them; that
-  request must keep working exactly as it does today.
-- **Every new response field must be additive.** Never remove or repurpose an existing
-  key. Old clients ignore unknown keys — they will not ignore a key that changed meaning.
-- **Never tighten an existing validation** as part of this work. If a new rule would
-  reject what an old client sends, gate the rule on the new field being present.
+> **Unknown enum value → `400`. Always. No fall-through, no default branch that proceeds.**
 
-Concretely: `deliver/` must still succeed for a request body of exactly
-`{stop_id, type, otp_code, latitude, longitude}`.
+Applies to `type`, `exception_reason`, `method`, and every enum added later.
 
-### 0.2 Do not trust the client
+### 0.2 Validate in this order, always
 
-Several new fields are client-asserted (`captured_at`, `latitude`, `accuracy_m`,
-`photo_captured`). They are useful, and they are also exactly what a rider would
-manipulate to close a stop they are not at. Each section below says what to validate
-against server-side truth. **Where the client's value and the server's disagree, the
-server's wins and the discrepancy is recorded.**
+Round one returned `OTP_EXPIRED` for a request with no `stop_id` at all, because the OTP
+branch ran before required-field validation. The rider was told to make the customer
+request a fresh code in order to fix a malformed request.
 
-### 0.3 Authentication, unchanged
+```
+1. Required fields present and well-formed      → 400 VALIDATION_ERROR
+2. Objects exist and belong to this rider       → 404 NOT_FOUND
+3. stop_id belongs to this assignment           → 400 STOP_MISMATCH
+4. State allows this action                     → 409
+5. Already done? → idempotent success (§ 0.5)
+6. OTP / proof checks                           → 400
+7. Geofence                                     → 400
+8. Perform the write
+```
 
-All `/api/delivery-partner/*` routes take `Authorization: Bearer <device_auth_key>` (a
-90-day opaque key, not a JWT) plus `X-App-Platform: DeliveryApp`. None of that changes.
+### 0.3 Backward compatibility is mandatory
+
+Riders run whatever build is on their phone; old versions live in the field for weeks.
+
+- Every new **request** field is optional. A request with none of them behaves exactly as
+  it does today.
+- Every new **response** field is additive. Never remove or repurpose an existing key.
+- Never tighten an existing validation. If a new rule would reject what an old client
+  sends, gate the rule on the new field being present.
+
+Concretely, this must keep working forever:
+`POST deliver/ {stop_id, type, otp_code, latitude, longitude}`
+
+### 0.4 Do not trust the client
+
+`captured_at`, `latitude`, `longitude`, `accuracy_m` and `photo_captured` are all asserted
+by the app, and are exactly what someone would forge to close a stop they are not at.
+Record them, cross-check against server-side truth where you can, and never let them
+*replace* a server-side check.
+
+### 0.5 Every write is idempotent
+
+The rider's network drops constantly — lifts, basements, stairwells. A lost response is
+normal, and the retry that follows must not double-apply anything. This covers `deliver/`,
+`/proof/`, `pickup/`, `accept/` and `wallet/withdraw/`.
+
+> **A repeat of an action already performed by the same rider returns `200` with the
+> original result — not `409`, not a second write.**
+
+### 0.6 Error shape
+
+Every non-2xx from `/api/delivery-partner/*` and `/api/auth/*`:
+
+```json
+{ "error": "Human sentence the rider could act on.", "error_code": "MACHINE_CODE" }
+```
+
+`error` stays for old clients. `error_code` is what the app branches on. Extra context
+(`distance_m`, `current_state`, `retry_after_seconds`) is welcome as additional keys.
 
 ---
 
-## 1. There are two different OTPs — do not conflate them
+## 1. What round one got wrong
 
-This is the single most likely source of a wrong fix here. They share nothing: not the
-endpoint, not the recipient, not the storage, not the lifetime.
+Verified against the live API on 12 Aug 2026 with a real rider account. **Fix these first —
+two of them are worse than the original problem.**
+
+### B1 — `deliver/` accepts an unknown `type` and returns 200 · critical
+
+```
+POST /assignments/433fa92f…/deliver/
+{"stop_id":"433e28c9…","type":"banana","otp_code":"123456"}
+→ 200 {"message":"Delivery proof recorded!"}
+```
+
+No OTP check. No geofence — no coordinates were even sent. And that `stop_id` belonged to a
+**different trip**. Every guard was skipped because the value fell outside the recognised set.
+
+Two ways this hurts. *Honest:* the app treats any non-error response as success, so the
+rider sees "Delivery complete", the stop leaves their list, and they ride off while the
+order is still open — nobody knows until the customer calls. *Dishonest:* a rider login
+becomes a button for closing work from home.
+
+**Fix:** restrict `type` to `{"otp","photo"}`; anything else is `400 INVALID_TYPE`. See § 0.1.
+
+### B2 — `deliver/` never checks the stop belongs to the assignment · critical
+
+A `stop_id` from one trip, posted against another trip's assignment, is processed.
+`/proof/` already does this correctly with `STOP_MISMATCH`; `deliver/` has no equivalent.
+A rider carrying two batches can close the **wrong customer's order**.
+
+**Fix:** port the `/proof/` check. `400 STOP_MISMATCH`.
+
+### B3 — `accept/` on a live trip silently rewinds it
+
+Calling `accept/` on a trip already `ACTIVE` returns it as `ASSIGNED`, discarding the
+completed hub pickup and every bag scan with it. A rider who scanned nine bags and
+re-entered the trip loses all nine.
+
+**Fix:** idempotent — re-accepting a trip you already hold returns its current state
+unchanged. Someone else's is `409 TRIP_TAKEN`. Never move a trip backwards.
+
+### B4 — The login lockout is inescapable
+
+The 30-second cooldown **is not enforced**: a second request 2 seconds later returned `200`
+and sent a second SMS. But when the send allowance runs out, exhaustion is reported as if
+it were that cooldown:
+
+```
+429 {"error":"Please wait 30s before requesting another code.",
+     "error_code":"OTP_COOLDOWN","cooldown_seconds":30,"resends_remaining":0}
+Retry-After: 30
+```
+
+Waiting the full 30 s returns exactly the same response. The rider waits, retries, loops
+forever, and never learns the real wait. **This locked a real account out during testing.**
+
+So the limit that should stop SMS spend doesn't work, and the one that does work reports
+itself as something it isn't.
+
+**Fix:** enforce the cooldown; give exhaustion its own code with the true reset (§ 6).
+
+### B5 — A trip cannot be released once `ACTIVE`
+
+`cancel/` is refused from `ACTIVE`. Confirming hub pickup moves a trip `ASSIGNED → ACTIVE`,
+and there is no way back. A rider whose bike breaks down cannot hand the trip back: the
+order is welded to them, invisible to the pool, until someone edits the database.
+
+**Not hypothetical — order `FRSH-7BA220` / assignment
+`433fa92f-c34f-40bd-8769-24b25faefd5d` is in exactly this state right now.** It needs a
+manual reset: trip `c466cef7` back to `PENDING`, rider unassigned, `bag_scanned` cleared on
+its drop-off. No customer order was falsely marked delivered.
+
+**Fix:** § 7.
+
+### B6 — Wrong error for a missing field
+
+Omitting `stop_id` returns `OTP_EXPIRED`. See § 0.2.
+
+### B7 — `error_code` stops short
+
+Correct on `deliver/` and throughout `/proof/`. **Missing** on `accept/` 404, `transit/`
+404, `pickup/`'s stop-mismatch 400, and `cancel/`'s state refusal.
+
+### B8 — Counter and payload inconsistencies
+
+- `resends_remaining` counts `3 → 2 → 0`, skipping 1.
+- Trip `5dfb1256` reports `stop_count: 3` but returns 2 stops, so the rider's screen
+  disagrees with the trip summary about how much work they have.
+
+### What round one got right — leave these alone
+
+- `error_code` on `deliver/`'s OTP and state paths (`INVALID_OTP`, `NOT_IN_TRANSIT`/409).
+- **All of `/proof/`**: the provenance fields, `capture_id` idempotency returning the same
+  row id with `duplicate: true`, the `STOP_MISMATCH` guard, and magic-byte file validation
+  that correctly rejected a mislabelled empty file. This one was done properly.
+
+---
+
+## 2. The two OTPs are different systems
+
+The likeliest source of a wrong fix. They share nothing.
 
 | | **Rider login OTP** | **Customer handover OTP** |
 | --- | --- | --- |
-| Endpoint | `POST /api/auth/send-otp/` → `POST /api/auth/verify-otp/` | `POST /api/delivery-partner/assignments/{id}/resend-otp/` → verified inside `deliver/` |
+| Endpoint | `POST /api/auth/send-otp/` → `verify-otp/` | `POST /assignments/{id}/resend-otp/` → verified inside `deliver/` |
 | Sent to | the **rider's** phone | the **customer's** phone |
-| Purpose | signs the rider into the app | proves the customer received the parcel |
-| Authentication | none (this is how you log in) | rider's Bearer key |
+| Proves | the rider may sign in | the customer received the parcel |
+| Auth | none — this *is* the login | rider's Bearer key |
 | Scope | a phone number | one assignment / stop |
-| Issued when | rider taps Continue on the login screen | at pickup, automatically |
-| Verified by | `verify-otp/`, returns a device key | `deliver/`, with `type: "otp"` and `otp_code` |
-| Who types it in | the rider, reading their own SMS | the rider, reading it aloud from the customer |
-| Covered by | **S6** | **S4** |
+| Covered in | § 6 | § 5 |
 
-`resend-otp/` under `/assignments/{id}/` is the **customer's** code. It resends the
-handover code for that delivery. It has nothing to do with logging in.
+`resend-otp/` under `/assignments/{id}/` is the **customer's** code. It has nothing to do
+with logging in.
 
-Note the asymmetry that follows from "who types it in": the rider's own login code may be
-SMS-autofilled by the phone (and the app sets `autocomplete="one-time-code"` for it). The
-customer's handover code must **never** be autofillable on the rider's device — the app
-deliberately does not set that attribute there. Do not "helpfully" add it.
+One consequence worth keeping: the rider's own login code may be SMS-autofilled by their
+phone. The customer's handover code must **never** be autofillable on the rider's device —
+the app deliberately omits `autocomplete="one-time-code"` there. Don't "helpfully" add it.
+
+**Cash on delivery is withdrawn.** An earlier draft asked for COD persistence, `cod_amount`
+on stop payloads, and a rider cash balance. **All three are cancelled** — the app no longer
+collects cash and sends no COD fields at all. Do not build them.
 
 ---
 
-## 2. Field reference — everything the client now sends
+## 3. `POST /assignments/{id}/deliver/`
 
-Quick lookup. Details and validation rules are in the per-change sections.
+The most important endpoint in the system. Everything in § 0 applies.
 
-### `POST /api/delivery-partner/assignments/{id}/deliver/` (JSON)
+### Request
 
-| Field | Type | Status | Notes |
+| Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `stop_id` | uuid | existing | |
-| `type` | `"otp"` \| `"photo"` | existing | `"photo"` now means the exception path |
-| `otp_code` | string(6) | existing | absent on the exception path |
-| `latitude` / `longitude` | float | existing | may be absent if the stop has no coords |
-| `photo_captured` | bool | **new** | |
-| `proof_url` | string | **new** | the URL `/proof/` returned |
-| `exception_reason` | `"OTP_UNAVAILABLE"` | **new** | present only on the exception path |
-| `accuracy_m` | number | **new** | GPS error radius in metres |
+| `stop_id` | uuid | yes | must belong to `{id}` |
+| `type` | `"otp"` \| `"photo"` | yes | **reject anything else** |
+| `otp_code` | string(6) | when `type="otp"` | |
+| `latitude` / `longitude` | float | no | absent when the device had no fix |
+| `accuracy_m` | float | no | error radius of that fix |
+| `photo_captured` | bool | no | a proof photo was uploaded for this stop |
+| `proof_url` | string | no | the URL `/proof/` returned |
+| `exception_reason` | `"OTP_UNAVAILABLE"` | no | only valid with `type="photo"` |
 
-### `POST /api/delivery-partner/proof/` (multipart)
+### Behaviour
 
-| Field | Type | Status |
-| --- | --- | --- |
-| `mission_id` | uuid | existing |
-| `photo` | file (JPEG) | existing |
-| `capture_id` | string | **new** — idempotency key |
-| `stop_id` | uuid | **new** |
-| `captured_at` | ISO-8601 | **new** |
-| `latitude` / `longitude` | float | **new** |
-| `accuracy_m` | float | **new** |
+Validate in the § 0.2 order, then:
 
----
+- **`type:"otp"`** — normal path. Verify the code, then the geofence, then complete.
+- **`type:"photo"` + `exception_reason`** — the no-code path, used when the customer cannot
+  supply a code (phone off, wrong number on file, SMS never arrived). Require a proof photo
+  for the stop, **still enforce the geofence**, complete, and flag for review.
+- **`type:"photo"` without `exception_reason`** — legacy clients. Accept as today.
+- **`photo_captured: true`** — verify a proof row exists for this stop (via `/proof/`'s
+  `stop_id`). If not, `400 PROOF_REQUIRED`; the claim is false.
 
-## S1 — `deliver/` must return a machine-readable `error_code`
-
-### Current behaviour
-
-Failures come back as human prose in `error`. A wrong OTP, a geofence rejection and a
-lifecycle error are indistinguishable to the client.
-
-### Why this matters
-
-These demand **opposite** responses from the rider — re-enter the code, walk closer,
-refresh the trip. The app currently pattern-matches the English message to decide whether
-to clear the OTP boxes (`src/lib/deliveryErrors.ts`). That works today and breaks the
-moment anyone rewords a message or the API is localised. It is a stopgap for exactly this
-change.
-
-### Required
-
-Keep `error` exactly as it is (old clients show it). **Add** `error_code`:
-
-```json
-{
-  "error": "You are too far from the delivery address",
-  "error_code": "OUTSIDE_GEOFENCE",
-  "distance_m": 1240
-}
-```
-
-### Codes
+### Error codes
 
 | `error_code` | HTTP | When |
 | --- | --- | --- |
+| `VALIDATION_ERROR` | 400 | missing/malformed field — **before** any OTP check |
+| `INVALID_TYPE` | 400 | `type` outside the allowed set |
+| `NOT_FOUND` | 404 | assignment unknown or not this rider's |
+| `STOP_MISMATCH` | 400 | `stop_id` not on this assignment |
+| `NOT_IN_TRANSIT` | 409 | wrong state; include `current_state` |
 | `INVALID_OTP` | 400 | code does not match |
 | `OTP_EXPIRED` | 400 | code aged out |
 | `OTP_ATTEMPTS_EXCEEDED` | 429 | too many wrong codes for this stop |
-| `OUTSIDE_GEOFENCE` | 400 | rider too far from the drop; include `distance_m` |
-| `LOCATION_REQUIRED` | 400 | no coordinates supplied and the stop is geofenced |
-| `ALREADY_DELIVERED` | 409 | see S7 — usually should not be reached |
-| `NOT_IN_TRANSIT` | 409 | assignment is in the wrong state |
-| `PROOF_REQUIRED` | 400 | see S5 |
+| `OUTSIDE_GEOFENCE` | 400 | too far; **include `distance_m`** |
+| `LOCATION_REQUIRED` | 400 | no coordinates and the stop is geofenced |
+| `PROOF_REQUIRED` | 400 | `photo_captured` or exception path with no proof row |
+| `INVALID_EXCEPTION` | 400 | unknown `exception_reason`, or sent with `type="otp"` |
+| `ALREADY_DELIVERED` | 409 | delivered by a **different** rider |
 
-Apply the same `error_code` convention to `pickup/`, `transit/` and `resend-otp/` while
-you are in there. It costs little and the client already has the plumbing.
+### Idempotency
 
----
+Same rider re-delivering the same stop → `200` with the original result. Side effects —
+earnings credited, trip advanced, customer notified — happen **exactly once**.
 
-## S2 — `/proof/` must accept provenance, and be idempotent
+Why it matters: without this, a `deliver/` whose response is lost leaves the delivery
+recorded and the rider shown a failure. Their retry then hard-errors on a stop that is
+already complete, and they are stuck with no route forward.
 
-### Current behaviour
-
-Accepts `mission_id` and `photo`. Returns `{url}`.
-
-### Why provenance matters
-
-The app captures the photo from a live camera stream onto a canvas, which **strips EXIF
-entirely** — no timestamp, no GPS, no device. A proof photo with no *when* and no *where*
-settles no dispute; a rider could photograph a parcel in the van a kilometre from the
-address. The app now stamps both into the pixels and sends them as fields.
-
-### Why idempotency matters
-
-The client **retries** transient upload failures (a lift lobby eating one request used to
-fail an otherwise-complete delivery). A retry after a lost response would otherwise store
-the same doorstep twice, with no way to tell which row the delivery refers to.
-
-### Required
-
-Accept and persist these additional multipart fields, all optional:
-
-| Field | Type | Notes |
-| --- | --- | --- |
-| `capture_id` | string ≤ 128 | idempotency key, stable across retries of one capture |
-| `stop_id` | uuid | which drop-off this evidences |
-| `captured_at` | ISO-8601 | client clock — store, do not trust |
-| `latitude` / `longitude` | float | client fix |
-| `accuracy_m` | float | error radius in metres |
-
-Also store `received_at` from the **server** clock, always.
-
-**Idempotency:** unique together on `(rider, capture_id)`. On a repeat, return `200` with
-the **existing** row's URL — not `409`, not a new row. The client treats a non-2xx as a
-failed upload and will block the delivery.
-
-**Response** — extend additively:
-
-```json
-{ "url": "https://cdn.freshon.in/proof/abc.jpg", "id": "uuid", "duplicate": false }
-```
-
-### Validation and edge cases
+### Edge cases — each needs a defined answer
 
 | Case | Required behaviour |
 | --- | --- |
-| `capture_id` absent (old client) | Accept, store a new row. No dedup possible — that is fine. |
-| Same `capture_id`, **different** rider | Treat as distinct. The key is only unique per rider. |
-| Same `capture_id`, different photo bytes | Return the existing row. Do not overwrite; the first upload is the evidence. |
-| `captured_at` far from `received_at` | Store both. Flag if the skew exceeds ~24 h — a wrong device clock is common and is not itself fraud. **Never reject on skew**; a rider with a bad clock cannot fix it at the door. |
-| `captured_at` in the future | Same — store, flag, do not reject. |
-| Latitude/longitude out of range | Reject the *field*, not the request: store the photo without coordinates. Losing the photo is worse than losing the fix. |
-| `stop_id` not on the given `mission_id` | Reject, `400`. This one is a genuine inconsistency. |
-| Photo larger than the limit | Keep the current limit generous (≥ 10 MB). New clients send ~150–250 KB; **old clients still send multi-megabyte files** and must keep working. |
-| Non-image upload | Reject, `400`, validate content type and magic bytes. |
-
-### Also: link the proof to the delivery
-
-Today `/proof/` and `deliver/` are unrelated writes joined only by `mission_id`. With
-`stop_id` here and `proof_url` from S5, attach the proof row to the stop it evidences.
+| Already delivered by **this** rider | `200`, original result, no second write |
+| Already delivered by **another** rider | `409 ALREADY_DELIVERED` |
+| Stop has no coordinates on record | Skip the geofence — neither end can measure it. Do **not** reject |
+| No coordinates sent, stop **is** geofenced | `400 LOCATION_REQUIRED` |
+| `accuracy_m` very large (e.g. 500 m) | Widen the geofence by the reported accuracy, capped around 150 m. A poor urban fix must not lock a rider out at the door |
+| Trip cancelled mid-delivery | `409 NOT_IN_TRANSIT` with `current_state` |
+| Two `deliver/` calls arrive concurrently | Row-lock the stop; one wins, the other returns the same result |
+| Correct OTP, outside geofence | `OUTSIDE_GEOFENCE`, and **do not consume an OTP attempt** — the code was right |
+| Wrong OTP **and** outside geofence | `INVALID_OTP` — the cheaper check first is fine |
+| `otp_code` malformed (non-numeric, wrong length) | `VALIDATION_ERROR`, and **not** counted as an attempt |
+| Last stop on a trip | Complete the trip in the same transaction |
+| Rider's device clock is wrong | Irrelevant here — never derive expiry from a client timestamp |
 
 ---
 
-## S3 — Record and flag the no-code exception
+## 4. `POST /proof/` — mostly done
 
-### Current behaviour
+Round one implemented this correctly. Two things remain:
 
-A `type: "photo"` delivery is indistinguishable from any other.
+1. **Link the proof to the delivery.** With `stop_id` here and `proof_url` on `deliver/`,
+   attach the row to the stop it evidences. Today they are unrelated writes joined only by
+   `mission_id`.
+2. **`captured_at` skew.** Store the client value *and* your own `received_at`. Flag skew
+   beyond ~24 h; **never reject on it** — a rider with a wrong device clock cannot fix that
+   at a customer's door.
 
-### Why this matters
-
-Until now, a rider whose customer could not receive the code had **no way to complete the
-delivery at all** — phone off, wrong number on file, SMS never arrived. The parcel is
-handed over in the real world and the app cannot record it. The rider's only options were
-abandoning the stop or faking something.
-
-The app now offers a photo-only path, **withheld until two failed code attempts or one
-resend**, behind a second confirmation. It must be visibly distinct from a normal delivery
-or it becomes the easy route rather than the last one.
-
-### Required
-
-- Accept `exception_reason` on `deliver/`. Currently one value, `"OTP_UNAVAILABLE"` —
-  model it as an extensible enum, more will follow (`CUSTOMER_ABSENT`, `ADDRESS_WRONG`).
-- Store it on the delivery and mark the delivery as requiring review.
-- Surface these in whatever queue operations already uses. If none exists, a filterable
-  flag plus a daily digest is enough to start.
-
-### Validation and edge cases
-
-| Case | Required behaviour |
-| --- | --- |
-| `exception_reason` present with `type: "otp"` | Reject, `400`. Contradictory: a code was used. |
-| `exception_reason` present, no proof photo for the stop | Reject, `400`, `PROOF_REQUIRED`. The photo is the *only* evidence on this path. |
-| `type: "photo"` with **no** `exception_reason` (old client) | Accept, as today. Do not retroactively flag old clients' deliveries. |
-| Unknown `exception_reason` value | Reject, `400`. Do not store free text. |
-| **Geofence on the exception path** | **Still enforced.** The exception is about the customer's phone, not about where the rider is. Do not let it bypass the location check. |
-
-### Rate
-
-Track exceptions per rider. A rider whose exception rate is materially above their peers'
-is the signal this flag exists to produce.
+Keep the upload limit generous (≥ 10 MB). New clients send 150–250 KB, but old builds still
+send multi-megabyte photos and must keep working.
 
 ---
 
-## S4 — Rate-limit `resend-otp/` (the customer's code) and report the limit
+## 5. `POST /assignments/{id}/resend-otp/` — the customer's code
 
-### Current behaviour
-
-No limit, and the response is a bare `200`.
-
-### Why this matters
-
-The app now enforces a 45-second cooldown per stop. **That is a courtesy, not a control** —
-it lives in memory and dies with a reload. The real cost of no server limit is your SMS
-bill and a gateway that starts refusing the send that would actually have worked.
-
-### Required
-
-Enforce a cooldown and a cap, per assignment **and** per rider **and** per destination
-phone number (a rider cycling between stops must not bypass a per-stop limit).
-
-Suggested: 45 s between sends, 5 sends per assignment, 20 per rider per hour.
-
-**Response** — extend additively:
+Rate-limit per assignment, per rider, **and** per destination phone — a rider cycling
+between stops must not sidestep a per-stop limit. Suggested: 45 s between sends, 5 per
+assignment, 20 per rider per hour.
 
 ```json
 { "sent": true, "cooldown_seconds": 45, "resends_remaining": 3 }
 ```
 
-On refusal, `429` with `Retry-After` and:
+On refusal: `429` + `Retry-After`, with `error_code` of `RESEND_COOLDOWN` **or**
+`RESEND_LIMIT`. **These are different states and must not share a code** — conflating them
+is exactly B4.
 
-```json
-{ "error": "Too many resend attempts. Wait 30 seconds.",
-  "error_code": "RESEND_COOLDOWN", "cooldown_seconds": 30, "resends_remaining": 0 }
-```
+### Lifecycle — currently undocumented, please pin down
 
-### OTP lifecycle — please pin these down explicitly
-
-These are currently undocumented and the app has to guess:
-
-| Question | Recommendation |
+| Question | Required |
 | --- | --- |
-| Does a resend invalidate the previous code? | **Yes.** One active code per stop. Two valid codes doubles the guessing surface and confuses a customer reading out the older SMS. |
-| Expiry | 15–30 minutes. Long enough for a slow stairwell, short enough to matter. |
-| Wrong-code attempts before lockout | 5 per stop, then `OTP_ATTEMPTS_EXCEEDED` (429). The app surfaces this and offers the S1 exception path. |
-| Storage | Hashed, not plaintext. Compare in constant time. |
-| Single use | Yes — a code that completed a delivery must not verify again. |
+| Does a resend invalidate the previous code? | **Yes.** One active code per stop — two valid codes doubles the guessing surface and confuses a customer reading the older SMS |
+| Expiry | 15–30 minutes |
+| Wrong attempts before lockout | 5 per stop, then `OTP_ATTEMPTS_EXCEEDED` (429). The app then offers the § 3 exception path |
+| Storage | Hashed, compared in constant time |
+| Single use | Yes — a code that closed a delivery must never verify again |
 
 ---
 
-## S5 — Distinguish "both proofs captured" from "one"
+## 6. `POST /api/auth/send-otp/` — the rider's login code
 
-### Current behaviour
+- **Actually enforce** the cooldown (B4): 30 s between sends, per phone **and** per IP.
+- Separate the two refusal states:
 
-`type` names exactly one proof. The app enforces a **two-step chain** — photo, then OTP,
-both mandatory for every drop-off — but has to send `type: "otp"` and upload the photo
-separately. The backend therefore **cannot verify that the policy it relies on was
-followed.** Every delivery looks OTP-only.
+| State | HTTP | `error_code` | `Retry-After` |
+| --- | --- | --- | --- |
+| Within the cooldown | 429 | `OTP_COOLDOWN` | seconds left on the cooldown |
+| Allowance exhausted | 429 | `OTP_RESEND_LIMIT` | seconds until the **window resets** |
 
-### Required
-
-- Accept `photo_captured: bool` on `deliver/` and store it.
-- When `photo_captured` is true, verify a proof row actually exists for that stop
-  (via S2's `stop_id`). If not, reject with `PROOF_REQUIRED` — the claim is false.
-- Optionally widen `type` to accept `"otp_photo"`. If you do, **keep accepting `"otp"` and
-  `"photo"` unchanged** — old clients only send those.
-
-Once shipped, "was proof of delivery actually captured?" becomes an answerable question
-for the first time.
-
----
-
-## S6 — Rate-limit the rider **login** OTP
-
-This one is about `/api/auth/send-otp/` — the rider's own code. Separate system from S4;
-see §1.
-
-### Current behaviour
-
-No limit. Until this release the app had **no resend button at all**, so a rider whose SMS
-never arrived had to tap "Change number", retype the same number and submit again — which
-sent a second code with nothing between them. The app now has a proper resend with a
-30-second client cooldown, which is again only a courtesy.
-
-### Required
-
-- Cooldown and cap per phone number **and** per IP. Suggested: 30 s between sends, 5 per
-  phone per hour, 20 per IP per hour.
-- Extend the response additively:
-  `{ "phone": "+91…", "message": "OTP sent", "cooldown_seconds": 30, "resends_remaining": 4 }`
-- `429` + `Retry-After` on refusal.
-- Same lifecycle rules as S4: resend invalidates the previous code, hashed storage,
-  constant-time compare, single use, capped verify attempts.
+The success shape is already correct — keep it, and fix the `resends_remaining`
+off-by-one (B8).
 
 ### Enumeration
 
-`send-otp/` is unauthenticated. Return the **same** response shape and timing whether or
-not the number belongs to a registered rider — otherwise the endpoint is a free
-"is this number a FreshOn rider?" oracle. Rate-limit by IP regardless of phone validity.
+`send-otp/` is unauthenticated. Return the **same response shape and the same timing**
+whether or not the number belongs to a registered rider, or the endpoint is a free "is this
+number a FreshOn rider?" oracle. Rate-limit by IP regardless of phone validity.
+
+### Sessions
+
+A new login currently invalidates the existing device key with no signal to the device
+losing it. A rider who signs in on a spare phone is silently ejected from the one in their
+hand — mid-delivery, losing the proof photo they just captured.
+
+Either allow more than one active device per rider, or return
+`401 {"error_code": "SESSION_SUPERSEDED"}` so the app can say "you signed in on another
+device" instead of behaving like a crash.
 
 ---
 
-## S7 — Make `deliver/` idempotent
+## 7. Trip lifecycle
 
-### Current behaviour
+### `accept/`
+Idempotent (B3). Re-accepting your own trip returns its current state; someone else's is
+`409 TRIP_TAKEN`. Never move a trip backwards.
 
-A second `deliver/` for an already-delivered stop returns an error
-("This stop is already delivered").
+### `cancel/` — must work from `ACTIVE` (B5)
+Riders break down, get injured, and have family emergencies. The system needs an answer.
 
-### Why this matters
+- From `PENDING` / `ASSIGNED`: as today — back to the pool.
+- From `ACTIVE`: **allow it.** Return undelivered stops to the pool, keep completed ones
+  completed, clear `bag_scanned` on what goes back, record who abandoned it and when, and
+  flag it for ops.
+- If you would rather keep `cancel/` strict, add `POST /trips/{id}/hand-back/` with that
+  behaviour instead. Either is fine — a rider with a broken bike must have *some* route.
 
-If the response to the first call is lost — a dropped connection at the exact wrong
-moment, which is the normal case in a stairwell — the delivery **has** been recorded but
-the rider sees a failure. Tapping again then produces a hard error on a stop that is
-actually complete, and the rider is stuck: the app shows it as failed, the backend shows
-it as done.
+### `pickup/` and `transit/`
+Add `error_code` (B7). Make `pickup/` idempotent: re-sending the same bag batch returns the
+current trip rather than an error.
 
-### Required
-
-If the same rider re-delivers the same stop with a matching proof, return `200` with the
-original result rather than an error. Treat it as "this already happened, here is what
-happened", not as a conflict.
-
-Reserve the `ALREADY_DELIVERED` / `409` case for a genuinely different actor or a
-materially different payload (different OTP, different exception reason).
-
-**Critically:** whatever side effects a delivery has — earnings credited, the trip
-advanced, the customer notified — must happen **once**. Idempotency here is what stops a
-retry from paying a rider twice for one drop.
+### Payload consistency
+`stop_count` must equal `len(stops)` (B8).
 
 ---
 
-## 3. Suggested rollout order
+## 8. `POST /wallet/withdraw/`
 
-Each step is independently deployable and safe on its own.
+Accept a client-supplied idempotency key and return the existing withdrawal on a repeat.
 
-| # | Change | Why here |
+There is nothing to deduplicate on today. The app guards double-taps in the UI, but a lost
+response is invisible to that guard: rider requests ₹2,000, the response dies, they tap
+again — **two withdrawals, ₹4,000 out**. You already solved this class of problem correctly
+for proof photos with `capture_id`; money deserves at least that.
+
+---
+
+## 9. Order of work
+
+| # | Do | Why here |
 | --- | --- | --- |
-| 1 | **S1** error codes | Retires the client's English pattern-matching. Zero risk, purely additive. |
-| 2 | **S7** idempotent deliver | Fixes a live "stuck rider" case: the delivery recorded, the rider shown a failure. |
-| 3 | **S2** proof provenance + idempotency | Makes the client's upload retries safe, and gives a proof photo a when and a where. |
-| 4 | **S4** + **S6** rate limits | Abuse control on both OTP endpoints. Independent of everything above. |
-| 5 | **S3** exception flagging | Needs S2's `stop_id` to check a proof exists. |
-| 6 | **S5** proof verification | Needs S2 and S3 in place to be meaningful. |
-
-S1 first is deliberate: until `error_code` exists, the app is reading your English error
-strings to decide how to react. Every step after it is safer once that is gone.
+| 1 | **B1** + **B2** | Same code path, same afternoon. B1 is an open door |
+| 2 | **B5** + reset `FRSH-7BA220` | A live order is stuck right now |
+| 3 | **B4** + § 6 | Riders locked out of their own shift |
+| 4 | § 3 idempotency + **B6** | Stops riders being stranded by lost responses |
+| 5 | **B3**, **B7**, **B8** | State and reporting correctness |
+| 6 | § 5 resend limits, § 8 withdrawal key | Abuse and money safety |
+| 7 | § 3 exception path + `PROOF_REQUIRED`, § 4 linking | Evidence integrity |
 
 ---
 
-## 4. What must NOT change
+## 10. Acceptance tests
 
-- `deliver/` must keep accepting `{stop_id, type, otp_code, latitude, longitude}` with no
-  new fields, and behave as it does today.
-- `/proof/` must keep accepting `{mission_id, photo}` alone.
-- `type` must keep accepting `"otp"` and `"photo"`.
-- Existing `error` strings should stay stable until `error_code` (S1) is deployed and the
-  client's fallback matcher is removed — the app currently reads them.
-- The 300 m delivery geofence stays. The app added its own 400 m gate in front of it as a
-  courtesy, so riders stop discovering the refusal *after* taking a photo and asking for a
-  code. It is not a replacement.
-- Do not add `autocomplete="one-time-code"` semantics to the customer handover code — see §1.
+Please write these. Round one passed a casual look and failed all of 1–4.
+
+**Type and ownership**
+1. `type:"banana"` → `400 INVALID_TYPE`, nothing written *(B1)*
+2. `type` absent → `400 VALIDATION_ERROR`
+3. `stop_id` from another assignment → `400 STOP_MISMATCH` *(B2)*
+4. `stop_id` absent → `400 VALIDATION_ERROR`, **not** `OTP_EXPIRED` *(B6)*
+
+**Idempotency**
+5. Deliver a stop, then replay the identical request → `200`, same result, earnings
+   credited **once**, one customer notification
+6. Two concurrent `deliver/` calls → one write, both `200`
+7. `accept/` on a trip you already hold, mid-pickup → state unchanged, bag scans intact *(B3)*
+8. Same `capture_id` twice → one row, `duplicate:true` on the second
+9. Same idempotency key twice to `withdraw/` → one withdrawal
+
+**OTP**
+10. Wrong code 5× → `429 OTP_ATTEMPTS_EXCEEDED`
+11. Correct code, rider 2 km away → `OUTSIDE_GEOFENCE` **with `distance_m`**, attempt
+    counter **unchanged**
+12. Resend → the previous code no longer verifies
+13. `send-otp/` twice inside 30 s → second is `429 OTP_COOLDOWN` **and no second SMS is
+    sent** *(B4)*
+14. Exhaust the allowance → `429 OTP_RESEND_LIMIT`, `Retry-After` is the real reset, and
+    waiting that long actually works *(B4)*
+15. `send-otp/` for an unregistered number → same shape and timing as a registered one
+
+**Lifecycle**
+16. Cancel an `ACTIVE` trip → undelivered stops back in the pool, completed ones untouched *(B5)*
+17. Every 4xx/5xx across `deliver/`, `pickup/`, `transit/`, `accept/`, `cancel/`,
+    `resend-otp/` carries an `error_code` *(B7)*
+18. `stop_count == len(stops)` on every trip payload *(B8)*
+
+**Backward compatibility**
+19. `deliver/` with only `{stop_id, type, otp_code, latitude, longitude}` → works exactly
+    as before
+20. `/proof/` with only `{mission_id, photo}` → works, no `capture_id` required
 
 ---
 
-## 5. Verification
+## 11. Verification
 
-A Bruno collection covering every endpoint lives in `bruno/` in the app repo. The relevant
-requests are `15`–`18` (assignment pickup / transit / deliver / resend-otp) and `21`
-(upload proof). Point `baseUrl` at your environment, set `deviceKey` from request `2`, and
-fill the rest into your own environment — the committed collection carries no credentials.
+A Bruno collection covering every endpoint is in `bruno/` in the app repo — requests 15–18
+(pickup / transit / deliver / resend-otp) and 21 (upload proof). Point `baseUrl` at your
+environment and fill `deviceKey` into your own; the committed collection carries no
+credentials.
 
-Per-change acceptance tests are listed inline above; S2 has the fullest set.
-
-### End-to-end check once S1–S3 and S7 are in
-
-1. Dispatch a trip with two drops. Pick up at the hub.
-2. At the first drop, submit `deliver/` with a wrong code → `400`,
-   `error_code: "INVALID_OTP"`. The app clears the boxes and asks again.
-3. Submit from outside the geofence → `400`, `error_code: "OUTSIDE_GEOFENCE"` with
-   `distance_m`. The app leaves the typed code alone and tells the rider to walk closer.
-4. Upload a proof photo twice with the same `capture_id` → one stored row, `200` both
-   times, second carrying `duplicate: true`.
-5. Complete the stop correctly → `200`, proof row linked to the stop.
-6. Replay that exact `deliver/` request → `200` with the original result, **not** a
-   `409`. This is the lost-response case from S7.
-7. At the second drop, exhaust the code attempts, then complete via the exception path →
-   `200`, delivery stored with `exception_reason: "OTP_UNAVAILABLE"` and flagged for
-   review. Confirm the geofence was still enforced on that path.
+**Please test on staging, not production.** Round one's problems were found on production
+against real customer orders, which is why four checks — the exception path,
+`photo_captured` / `PROOF_REQUIRED`, `deliver/` idempotency, and the geofence itself —
+have **still never been verified**. Reaching them requires completing a real delivery, and
+that could not be done safely on live data. On staging, run all of § 10.

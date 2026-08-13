@@ -405,7 +405,7 @@ const Onboarding = () => {
                                                 aria-pressed={active}
                                                 onClick={() => setProfile({ ...profile, vehicle_type: v.id })}
                                                 className={`flex min-h-[72px] touch-manipulation flex-col items-center justify-center gap-1.5 rounded-2xl text-[11px] font-bold transition active:scale-95
-                          ${active ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-card text-muted-foreground ring-1 ring-border"}`}
+                          ${active ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground ring-1 ring-border"}`}
                                             >
                                                 <Icon className="h-5 w-5" /> {v.name}
                                             </button>
@@ -497,7 +497,7 @@ const Onboarding = () => {
                                                 aria-pressed={active}
                                                 onClick={() => setProfile({ ...profile, payout_method: m.id })}
                                                 className={`flex min-h-[56px] touch-manipulation items-center justify-center gap-2 rounded-2xl text-sm font-bold transition active:scale-95
-                        ${active ? "bg-primary text-primary-foreground shadow-glow-primary" : "bg-card text-muted-foreground ring-1 ring-border"}`}
+                        ${active ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground ring-1 ring-border"}`}
                                             >
                                                 <Icon className="h-4 w-4" /> {m.label}
                                             </button>
@@ -635,7 +635,7 @@ const Onboarding = () => {
                                                     />
                                                     <label
                                                         className={`mt-2 flex min-h-[44px] cursor-pointer touch-manipulation items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition active:scale-[.98]
-                            ${isUploading ? "bg-muted text-muted-foreground" : uploaded ? "bg-secondary text-secondary-foreground" : "bg-accent text-accent-foreground shadow-glow-amber"}`}
+                            ${isUploading ? "bg-muted text-muted-foreground" : uploaded ? "bg-secondary text-secondary-foreground" : "bg-accent text-accent-foreground"}`}
                                                     >
                                                         {isUploading ? (
                                                             <>
@@ -738,7 +738,7 @@ const Onboarding = () => {
         .btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px;
           width: 100%; height: 56px; border-radius: 16px; padding: 0 20px;
           background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
-          font-size: 15px; font-weight: 700; box-shadow: var(--shadow-glow-primary);
+          font-size: 15px; font-weight: 700; box-shadow: var(--);
           transition: transform .12s ease; touch-action: manipulation;
           -webkit-tap-highlight-color: transparent; user-select: none; }
         .btn-primary:active:not(:disabled) { transform: scale(.97); }

@@ -3,7 +3,7 @@ import { ArrowRight, MapPin, Package, Zap } from "lucide-react";
 import { useState } from "react";
 
 const serviceMeta = {
-  swift: { label: "Swift", className: "bg-accent text-accent-foreground shadow-glow-amber", icon: Zap },
+  swift: { label: "Swift", className: "bg-accent text-accent-foreground", icon: Zap },
   "next-day": { label: "Next Day", className: "bg-primary-soft text-primary", icon: Package },
   standard: { label: "Standard", className: "bg-muted text-foreground", icon: Package },
 } as const;
@@ -22,8 +22,7 @@ export const MissionCard = ({ mission, onAccept }: { mission: Assignment; onAcce
   };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-secondary p-5 text-primary-foreground shadow-elevated animate-slide-up">
-      <div className="absolute -right-8 -top-8 h-40 w-40 rounded-full bg-accent/20 blur-2xl" />
+    <div className="relative overflow-hidden rounded-3xl bg-secondary p-5 text-secondary-foreground shadow-elevated animate-slide-up">
       <div className="relative">
         <div className="flex items-center justify-between">
           <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${meta.className}`}>
@@ -47,7 +46,7 @@ export const MissionCard = ({ mission, onAccept }: { mission: Assignment; onAcce
         <button
           onClick={handle}
           disabled={accepting}
-          className={`group relative mt-5 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-accent px-5 py-4 text-sm font-bold text-accent-foreground shadow-glow-amber transition-all disabled:opacity-80
+          className={`group relative mt-5 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-accent px-5 py-4 text-sm font-bold text-accent-foreground transition-all disabled:opacity-80
             ${accepting ? "scale-[1.02]" : "hover:scale-[1.01] active:scale-[0.99]"}`}
         >
           <span className={`absolute inset-0 bg-white/30 transition-transform duration-500 ${accepting ? "scale-x-100" : "scale-x-0"}`} style={{ transformOrigin: "left" }} />

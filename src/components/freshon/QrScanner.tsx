@@ -84,7 +84,7 @@ export const QrScanner = ({
                         <div className="text-sm text-primary-foreground/80">{hint}</div>
                         <button
                             onClick={() => onScan(demoCode ?? `DEMO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)}
-                            className="w-full rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber"
+                            className="w-full rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground"
                         >
                             Simulate scan
                         </button>
@@ -129,7 +129,7 @@ export const QrScanner = ({
                         <button
                             disabled={!manualValue.trim()}
                             onClick={() => onScan(manualValue.trim())}
-                            className="w-full rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground shadow-glow-amber disabled:opacity-50"
+                            className="w-full rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground disabled:opacity-50"
                         >
                             Confirm code
                         </button>
