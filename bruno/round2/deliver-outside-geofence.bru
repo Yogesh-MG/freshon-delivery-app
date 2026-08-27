@@ -26,6 +26,10 @@ body:json {
   }
 }
 
+vars:pre-request {
+  baseUrl: https://api
+}
+
 assert {
   res.status: eq 400
   res.body.error_code: eq OUTSIDE_GEOFENCE

@@ -64,7 +64,7 @@ export const QrScanner = ({
 
     return (
         <div className="fixed inset-0 z-[60] flex flex-col bg-secondary/95 backdrop-blur-sm">
-            <div className="flex items-center justify-between px-5 pt-6 text-primary-foreground">
+            <div className="flex items-center justify-between px-5 pt-6 text-secondary-foreground">
                 <div>
                     <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent-glow">Pickup</div>
                     <div className="text-lg font-extrabold">{title}</div>
@@ -81,7 +81,7 @@ export const QrScanner = ({
                             <div className="pointer-events-none absolute inset-6 rounded-2xl border-2 border-dashed border-accent/80" />
                             <Wand2 className="h-12 w-12 text-accent/80" />
                         </div>
-                        <div className="text-sm text-primary-foreground/80">{hint}</div>
+                        <div className="text-sm text-secondary-foreground/80">{hint}</div>
                         <button
                             onClick={() => onScan(demoCode ?? `DEMO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`)}
                             className="w-full rounded-2xl bg-accent px-5 py-3.5 text-sm font-bold text-accent-foreground"
@@ -90,7 +90,7 @@ export const QrScanner = ({
                         </button>
                         <button
                             onClick={() => setManual(true)}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-primary-foreground"
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-secondary-foreground"
                         >
                             <Keyboard className="h-4 w-4" /> Enter code manually
                         </button>
@@ -102,21 +102,21 @@ export const QrScanner = ({
                             <div id={regionId.current} className="h-full w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover" />
                             <div className="pointer-events-none absolute inset-6 rounded-2xl border-2 border-dashed border-accent/80" />
                         </div>
-                        <div className="mt-4 flex items-center gap-2 text-sm text-primary-foreground/80">
+                        <div className="mt-4 flex items-center gap-2 text-sm text-secondary-foreground/80">
                             <ScanLine className="h-4 w-4 text-accent" /> {hint}
                         </div>
                         {error && <div className="mt-2 text-center text-sm text-accent-glow">{error}</div>}
                         <button
                             onClick={() => setManual(true)}
-                            className="mt-6 flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-primary-foreground"
+                            className="mt-6 flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-secondary-foreground"
                         >
                             <Keyboard className="h-4 w-4" /> Enter code manually
                         </button>
                     </>
                 ) : (
                     <div className="w-full max-w-xs space-y-3">
-                        <label className="text-sm font-semibold text-primary-foreground/90">Handover code</label>
-                        <div className="text-xs text-primary-foreground/60">
+                        <label className="text-sm font-semibold text-secondary-foreground/90">Handover code</label>
+                        <div className="text-xs text-secondary-foreground/60">
                             Printed under the QR on the bag
                         </div>
                         <input
@@ -124,7 +124,7 @@ export const QrScanner = ({
                             value={manualValue}
                             onChange={(e) => setManualValue(e.target.value)}
                             placeholder="D-FRSH-123456-1"
-                            className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 font-mono text-lg text-primary-foreground outline-none ring-accent placeholder:text-primary-foreground/40 focus:ring-2"
+                            className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 font-mono text-lg text-secondary-foreground outline-none ring-accent placeholder:text-secondary-foreground/40 focus:ring-2"
                         />
                         <button
                             disabled={!manualValue.trim()}
@@ -133,7 +133,7 @@ export const QrScanner = ({
                         >
                             Confirm code
                         </button>
-                        <button onClick={() => setManual(false)} className="w-full py-2 text-sm font-semibold text-primary-foreground/70">
+                        <button onClick={() => setManual(false)} className="w-full py-2 text-sm font-semibold text-secondary-foreground/70">
                             {demo ? "Back" : "Back to camera"}
                         </button>
                     </div>

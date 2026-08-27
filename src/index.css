@@ -78,50 +78,90 @@
    * dimmed screen in the rain.
    */
   .dark {
-    --background: 215 28% 8%;
-    --foreground: 210 20% 96%;
+    /**
+     * Neutral, genuinely.
+     *
+     * Two revisions of history here. The first dark palette was hue 215 at
+     * 25–28% saturation — a blue-grey that tinted every surface cool. The
+     * second swung to the brand green at 5–8% saturation, which on a real
+     * screen still reads as a grey-green film over the whole app — "washed",
+     * in the words of the person who had to look at it. Surfaces now sit at
+     * 2–4% saturation: at these lightness levels that is visually a clean
+     * dark grey (a #121212-family ground, like every stock Android dark
+     * theme), and the brand colour is spent where it belongs — on the
+     * controls, not on the walls.
+     *
+     * Surfaces step rather than repeat. Material separates elevation by surface
+     * colour, not by shadow, because a shadow on a dark ground is invisible:
+     *
+     *   background 7%  →  card 11%  →  popover 14%  →  secondary 20%
+     *
+     * so a sheet over a card over the page reads as three layers with the
+     * lights off, which is the single thing that most makes a dark theme look
+     * designed rather than inverted.
+     */
+    --background: 150 3% 7%;
+    --foreground: 150 5% 93%;
 
-    --card: 215 25% 12%;
-    --card-foreground: 210 20% 96%;
+    /* Elevation rung 1 — resting cards on the page. */
+    --card: 150 3% 11%;
+    --card-foreground: 150 5% 93%;
 
-    --popover: 215 25% 12%;
-    --popover-foreground: 210 20% 96%;
+    /* Elevation rung 2 — menus and sheets, which float above cards. */
+    --popover: 150 3% 14%;
+    --popover-foreground: 150 5% 93%;
 
-    --primary: 142 58% 45%;
-    --primary-foreground: 215 30% 7%;
-    --primary-glow: 142 62% 55%;
-    --primary-soft: 142 38% 16%;
+    /**
+     * Vivid, not pastel. The first pass used Material's tone-80 treatment —
+     * lightened AND desaturated (44% 58%) — and the mint that produced is
+     * most of what made the theme look faded: the one place the brand shows
+     * is the place that turned pale. Lightening alone is what dark surfaces
+     * actually require; saturation stays. Text on it stays near-black, which
+     * clears 5:1 where white on this green would not.
+     */
+    --primary: 142 58% 48%;
+    --primary-foreground: 150 30% 8%;
+    --primary-glow: 142 60% 60%;
+    --primary-soft: 148 26% 15%;
 
     /* Stays a raised dark surface, as in light mode — it is used for inverted
-       chips and buttons, so flipping it would invert those twice. */
-    --secondary: 215 20% 20%;
-    --secondary-foreground: 210 20% 96%;
+       chips, full-screen overlays (scanner, camera, trip offer) and buttons, so
+       flipping it would invert those twice. Elevation rung 3. */
+    --secondary: 150 4% 20%;
+    --secondary-foreground: 150 5% 95%;
 
-    --muted: 215 20% 17%;
-    --muted-foreground: 215 15% 70%;
+    --muted: 150 4% 15%;
+    /* Kept well clear of the 4.5:1 floor: low-contrast grey is the first thing
+       to fail on a dimmed screen in the rain. */
+    --muted-foreground: 150 4% 69%;
 
-    --accent: 38 90% 58%;
-    --accent-foreground: 215 30% 9%;
-    --accent-glow: 38 96% 66%;
+    --accent: 38 84% 60%;
+    --accent-foreground: 40 45% 9%;
+    --accent-glow: 38 90% 70%;
 
-    --destructive: 0 72% 62%;
-    --destructive-foreground: 215 30% 8%;
+    --destructive: 0 65% 63%;
+    --destructive-foreground: 0 35% 9%;
 
-    --success: 142 58% 46%;
-    --success-foreground: 215 30% 7%;
+    --success: 142 55% 45%;
+    --success-foreground: 150 28% 8%;
 
-    --border: 215 18% 22%;
-    --input: 215 18% 22%;
-    --ring: 142 58% 50%;
+    /**
+     * Material's outline sits close to the surface it divides — a bright border
+     * on dark reads as a drawn box. These are a couple of rungs above `card`
+     * and no more, with `input` a touch brighter so fields stay findable.
+     */
+    --border: 150 4% 19%;
+    --input: 150 4% 24%;
+    --ring: 142 58% 48%;
 
 
     /* Shadows read as depth on light grounds and as nothing on dark ones, so
        they lean on a darker spread plus a hairline of light from the border. */
-    --shadow-card: 0 4px 24px -10px hsl(215 40% 2% / 0.7);
-    --shadow-elevated: 0 12px 40px -14px hsl(215 40% 2% / 0.85);
+    --shadow-card: 0 4px 24px -10px hsl(150 30% 1% / 0.72);
+    --shadow-elevated: 0 12px 40px -14px hsl(150 30% 1% / 0.86);
 
-    --glass-bg: hsla(215, 25%, 14%, 0.74);
-    --glass-border: hsla(0, 0%, 100%, 0.08);
+    --glass-bg: hsla(150, 4%, 13%, 0.76);
+    --glass-border: hsla(0, 0%, 100%, 0.07);
 
     color-scheme: dark;
   }
@@ -196,7 +236,7 @@
     border: 1px solid var(--glass-border);
   }
   .glass-dark {
-    background: hsla(215, 25%, 15%, 0.72);
+    background: hsla(150, 4%, 14%, 0.74);
     backdrop-filter: blur(18px) saturate(160%);
     -webkit-backdrop-filter: blur(18px) saturate(160%);
     border: 1px solid hsla(0, 0%, 100%, 0.08);
@@ -209,8 +249,8 @@
     background-size: 40px 40px;
   }
   .dark .map-grid {
-    background-color: hsl(215 26% 11%);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0v40' fill='none' stroke='%23273039' stroke-width='1'/%3E%3C/svg%3E");
+    background-color: hsl(150 3% 11%);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cpath d='M40 0H0v40' fill='none' stroke='%232b2e2c' stroke-width='1'/%3E%3C/svg%3E");
   }
 
   /**

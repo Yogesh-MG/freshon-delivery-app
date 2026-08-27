@@ -25,7 +25,7 @@ export const RatingBadge = ({ rating, className = "" }: { rating: number; classN
     return (
         <span
             className={`inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-0.5 text-xs font-extrabold shadow-sm ${className}`}
-            style={{ color: known ? tier.color : "hsl(215 16% 47%)" }}
+            style={{ color: known ? tier.color : "hsl(150 8% 42%)" }}
             title={known ? `${value.toFixed(1)} — ${tier.label}` : "No rating yet"}
         >
             <Star className="h-3 w-3 fill-current" />

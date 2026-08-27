@@ -43,9 +43,14 @@ export const orderIdFromBagCode = (raw: string): string | null => {
   if (!code.startsWith(BAG_CODE_PREFIX)) return null;
 
   const body = code.slice(BAG_CODE_PREFIX.length);
+  if (!body) return null;
+
   const cut = body.lastIndexOf("-");
-  if (cut <= 0) return null;
-  return withPrefix(body.slice(0, cut));
+  const suffix = cut > 0 ? body.slice(cut + 1) : "";
+  if (cut > 0 && /^\d+$/.test(suffix)) {
+    return withPrefix(body.slice(0, cut));
+  }
+  return withPrefix(body);
 };
 
 /**
@@ -66,10 +71,23 @@ const readBagCode = (code: string): { orderId: string; send: string }[] => {
 
   const readings: { orderId: string; send: string }[] = [];
   const cut = body.lastIndexOf("-");
-  // Printed form: the last segment is the bag index, so the code goes as-is.
-  if (cut > 0) readings.push({ orderId: withPrefix(body.slice(0, cut)), send: code });
-  // No index in the code — treat the whole body as the reference, bag 1.
-  readings.push({ orderId: withPrefix(body), send: `${code}-1` });
+
+  // Check if cut > 0 points to a suffix like "-1", "-2", etc.
+  const suffix = cut > 0 ? body.slice(cut + 1) : "";
+  const isNumericIndex = /^\d+$/.test(suffix);
+
+  if (cut > 0 && isNumericIndex) {
+    // Standard printed form with trailing index (e.g. D-FRSH-4CC553-1 or D-4CC553-1)
+    readings.push({ orderId: withPrefix(body.slice(0, cut)), send: code });
+  } else {
+    // No numeric index suffix (e.g. D-FRSH-AE2CB8 or D-AE2CB8).
+    // Treat the entire body as the order reference for bag 1.
+    readings.push({ orderId: withPrefix(body), send: `${code}-1` });
+    if (cut > 0) {
+      // Secondary fallback if it wasn't numeric
+      readings.push({ orderId: withPrefix(body.slice(0, cut)), send: code });
+    }
+  }
   return readings;
 };
 

@@ -94,8 +94,8 @@ describe("BagScanFlow hub handover", () => {
 
   it("sends a bag index even when the scanned code carries none", async () => {
     // Regression: the live API reads the last segment as the bag index, so a
-    // bare D-FRSH-A434E1 resolves to FRSH-FRSH and the handover is refused.
-    // The scan is still accepted — it is a real bag — but it goes out as bag 1.
+    // bare D-FRSH-A434E1 previously resolved to FRSH-FRSH and handover was refused.
+    // The scan is accepted — it is a real bag — and it goes out as bag 1.
     const onAllScanned = vi.fn().mockResolvedValue(undefined);
     render(<BagScanFlow trip={trip(1)} onAllScanned={onAllScanned} />);
 
@@ -105,6 +105,13 @@ describe("BagScanFlow hub handover", () => {
         { stop_id: "s2", order_id: "FRSH-A434E2", code: "D-FRSH-A434E2-1" },
       ]),
     );
+  });
+
+  it("correctly matches order codes like D-FRSH-AE2CB8 without resolving to FRSH-FRSH", () => {
+    render(<BagScanFlow trip={trip(0)} onAllScanned={vi.fn()} />);
+
+    scan("D-FRSH-A434E1");
+    expect(screen.getByText("1 / 2 bags scanned")).toBeInTheDocument();
   });
 
   it("accepts a lowercase manually-typed code", () => {

@@ -142,6 +142,9 @@ const Index = () => {
   const [online, setOnline] = useState(false);
   // Covers the whole go-online sequence: permissions, GPS fix, status write, fetch.
   const [statusPending, setStatusPending] = useState(false);
+  // Where that sequence is heading, so the toggle can label the wait by its
+  // destination — `online` itself doesn't flip until the status write lands.
+  const [statusTarget, setStatusTarget] = useState<boolean | null>(null);
   // Readable from refreshDashboard without adding it to any dependency list.
   const statusPendingRef = useRef(false);
   statusPendingRef.current = statusPending;
@@ -458,6 +461,7 @@ const Index = () => {
     // showed none of it, so the rider's tap looked ignored. Held until the data
     // is actually on screen, not just until the request returns.
     setStatusPending(true);
+    setStatusTarget(nextOnline);
     try {
     if (nextOnline) {
       const [notifyOk, locationOk] = await Promise.all([
@@ -500,6 +504,7 @@ const Index = () => {
     if (nextOnline) await refreshDashboard();
     } finally {
       setStatusPending(false);
+      setStatusTarget(null);
     }
   };
 
@@ -775,7 +780,7 @@ const Index = () => {
               {!hasActiveWork && (
                 <>
                   {isVerified ? (
-                    <StatusToggle online={online} pending={statusPending} onChange={updateOnline} />
+                    <StatusToggle online={online} pending={statusPending} target={statusTarget} onChange={updateOnline} />
                   ) : (
                     <VerificationGate verification={verification} onOpen={() => navigate("/onboarding")} />
                   )}

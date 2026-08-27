@@ -144,7 +144,7 @@ export const CameraCapture = ({
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col bg-secondary/95 backdrop-blur-sm">
-      <div className="flex items-center justify-between px-5 pt-6 text-primary-foreground">
+      <div className="flex items-center justify-between px-5 pt-6 text-secondary-foreground">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-accent-glow">Step 1 of 2</div>
           <div className="text-lg font-extrabold">{title}</div>
@@ -171,7 +171,7 @@ export const CameraCapture = ({
           <div className="pointer-events-none absolute inset-5 rounded-2xl border-2 border-dashed border-accent/60" />
         </div>
 
-        <div className="mt-4 text-center text-sm text-primary-foreground/80">
+        <div className="mt-4 text-center text-sm text-secondary-foreground/80">
           {processing
             ? "Stamping the time and place…"
             : preview
@@ -182,7 +182,7 @@ export const CameraCapture = ({
         {/* What was stamped into the frame, repeated in text so the rider can
             see it landed without squinting at the thumbnail. */}
         {preview && (
-          <div className="mt-2 flex max-w-xs items-center gap-1.5 text-center text-[11px] text-primary-foreground/70">
+          <div className="mt-2 flex max-w-xs items-center gap-1.5 text-center text-[11px] text-secondary-foreground/70">
             <MapPin className="h-3 w-3 shrink-0" />
             <span>{buildProofStamp(preview.meta).join(" · ")}</span>
           </div>
@@ -201,7 +201,7 @@ export const CameraCapture = ({
               </button>
               <button
                 onClick={retake}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-primary-foreground"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 px-4 py-2.5 text-sm font-bold text-secondary-foreground"
               >
                 <RotateCcw className="h-4 w-4" /> Retake
               </button>
@@ -209,7 +209,7 @@ export const CameraCapture = ({
           ) : error ? (
             <button
               onClick={() => (demo ? void shootDemo() : void start())}
-              className="w-full rounded-2xl bg-white/10 px-5 py-3.5 text-sm font-bold text-primary-foreground"
+              className="w-full rounded-2xl bg-white/10 px-5 py-3.5 text-sm font-bold text-secondary-foreground"
             >
               {demo ? "Use a demo photo" : "Try camera again"}
             </button>
@@ -225,7 +225,7 @@ export const CameraCapture = ({
               {demo && (
                 <button
                   onClick={() => void shootDemo()}
-                  className="w-full rounded-2xl bg-white/10 px-4 py-2.5 text-xs font-bold text-primary-foreground/80"
+                  className="w-full rounded-2xl bg-white/10 px-4 py-2.5 text-xs font-bold text-secondary-foreground/80"
                 >
                   Simulate photo (demo)
                 </button>

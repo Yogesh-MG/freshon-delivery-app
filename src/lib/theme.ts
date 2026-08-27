@@ -46,7 +46,9 @@ export function applyTheme(choice: ThemeChoice): "light" | "dark" {
   document.documentElement.classList.toggle("dark", resolved === "dark");
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", resolved === "dark" ? "#0F151C" : "#F7FAFC");
+  // Must track --background in index.css exactly, or the Android status bar
+  // sits a visibly different shade from the page directly under it.
+  if (meta) meta.setAttribute("content", resolved === "dark" ? "#111212" : "#F8FAFC");
 
   return resolved;
 }

@@ -74,7 +74,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
         />
       </div>
 
-      <div className="flex items-center justify-between px-5 pt-5 text-primary-foreground">
+      <div className="flex items-center justify-between px-5 pt-5 text-secondary-foreground">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-glow">
             New trip available
@@ -125,15 +125,15 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
               {i + 1}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-bold text-primary-foreground">
+              <div className="truncate text-sm font-bold text-secondary-foreground">
                 {stop.customer || stop.label}
               </div>
-              <div className="flex items-center gap-1 text-xs text-primary-foreground/60">
+              <div className="flex items-center gap-1 text-xs text-secondary-foreground/60">
                 <MapPin className="h-3 w-3 shrink-0" />
                 <span className="truncate">{stop.address || stop.label}</span>
               </div>
               {(stop.order_id || stop.weight_kg != null) && (
-                <div className="mt-0.5 flex items-center gap-1 text-[11px] text-primary-foreground/50">
+                <div className="mt-0.5 flex items-center gap-1 text-[11px] text-secondary-foreground/50">
                   <Package className="h-3 w-3" />
                   {[
                     stop.order_id ? `Order ${stop.order_id}` : null,
@@ -150,9 +150,9 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
 
       {/* Hub info */}
       {trip.hub && (
-        <div className="mx-5 mt-3 flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-xs text-primary-foreground/70">
+        <div className="mx-5 mt-3 flex items-center gap-2 rounded-2xl bg-white/5 px-4 py-2.5 text-xs text-secondary-foreground/70">
           <MapPin className="h-3.5 w-3.5 shrink-0 text-accent" />
-          Pickup from <span className="font-semibold text-primary-foreground ml-1">{trip.hub.label}</span>
+          Pickup from <span className="font-semibold text-secondary-foreground ml-1">{trip.hub.label}</span>
         </div>
       )}
 
@@ -175,7 +175,7 @@ export const TripOffer = ({ trip, inRange, onClaim, onDismiss }: Props) => {
             )}
           </button>
         ) : (
-          <div className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 py-4 text-sm font-bold text-primary-foreground/50 ring-1 ring-white/10">
+          <div className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white/10 py-4 text-sm font-bold text-secondary-foreground/50 ring-1 ring-white/10">
             <AlertCircle className="h-4 w-4" /> Out of dispatch range
           </div>
         )}
@@ -196,10 +196,10 @@ const StatCard = ({
   accent?: boolean;
 }) => (
   <div className="rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
-    <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-primary-foreground/60">
+    <div className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-secondary-foreground/60">
       {icon} {label}
     </div>
-    <div className={`mt-1 truncate text-base font-extrabold tabular-nums ${accent ? "text-accent-glow" : "text-primary-foreground"}`}>
+    <div className={`mt-1 truncate text-base font-extrabold tabular-nums ${accent ? "text-accent-glow" : "text-secondary-foreground"}`}>
       {value}
     </div>
   </div>

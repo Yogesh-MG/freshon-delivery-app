@@ -20,20 +20,42 @@ export default defineConfig(({ mode }) => ({
         host: host || "::",
         port: 8100,
         strictPort: true,
-        hmr: host
-            ? {
-                protocol: "ws",
-                host,
-                port: 1431,
-            }
-            : {
-                overlay: false,
-            },
+        // NO_HMR=1 turns hot reload off entirely. Over a flaky link the HMR
+        // socket drops and every reconnect force-reloads the page, which wipes
+        // in-progress app state (a half-entered OTP, an open proof drawer).
+        hmr: process.env.NO_HMR
+            ? false
+            : host
+                ? {
+                    protocol: "ws",
+                    host,
+                    port: 1431,
+                }
+                : {
+                    overlay: false,
+                },
         fs: {
             allow: [
                 // Allow serving files from one level up (workspace root)
                 path.resolve(__dirname, ".."),
             ],
+        },
+        /**
+         * Same-origin path to the backend for dev on a device. The API's CORS
+         * allowlist only carries localhost origins, so a phone or LAN browser
+         * pointed at the dev server can't call it directly — set
+         * VITE_API_URL=/ (e.g. in .env.local) and requests ride through here.
+         */
+        proxy: {
+            "/api": {
+                target: process.env.DEV_API_PROXY_TARGET || "https://api.freshon.in",
+                changeOrigin: true,
+            },
+            "/ws": {
+                target: process.env.DEV_API_PROXY_TARGET || "https://api.freshon.in",
+                changeOrigin: true,
+                ws: true,
+            },
         },
     },
     plugins: [react()].filter(Boolean),

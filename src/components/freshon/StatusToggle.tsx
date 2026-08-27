@@ -15,11 +15,14 @@ import { Loader2, Power, Zap } from "lucide-react";
 export const StatusToggle = ({
     online,
     pending = false,
+    target = null,
     onChange,
 }: {
     online: boolean;
     /** True from the tap until the dashboard has finished loading. */
     pending?: boolean;
+    /** Where the in-flight toggle is heading; null when nothing is in flight. */
+    target?: boolean | null;
     onChange: (v: boolean) => void;
 }) => {
     const [ripples, setRipples] = useState<{ id: number; x: number; y: number }[]>([]);
@@ -34,20 +37,29 @@ export const StatusToggle = ({
         onChange(!online);
     };
 
+    // The direction of travel. While pending, `online` still holds the old
+    // value for the whole permissions-and-GPS stretch, so labelling by it told
+    // a rider who had just tapped Go Online that they were "Going offline…".
+    const goingOnline = pending ? target ?? online : online;
+
     // What the app is doing, in the rider's terms. "Going online" covers the
     // permission prompts and the GPS fix; "Getting you set up" covers the fetch
     // after the status write, which is the longest and least visible part.
     const headline = pending
-        ? online
-            ? "Getting you set up…"
+        ? goingOnline
+            ? online
+                ? "Getting you set up…"
+                : "Going online…"
             : "Going offline…"
         : online
             ? "You're on the grid"
             : "Tap to Go Online";
 
     const status = pending
-        ? online
-            ? "Loading your missions"
+        ? goingOnline
+            ? online
+                ? "Loading your missions"
+                : "Checking permissions & GPS"
             : "Signing off"
         : online
             ? "Online · Accepting Missions"
@@ -60,7 +72,7 @@ export const StatusToggle = ({
             aria-busy={pending}
             aria-label={online ? "Go offline" : "Go online"}
             className={`relative w-full overflow-hidden rounded-3xl p-5 text-left transition-all duration-500
-        ${online
+        ${goingOnline
                     ? "bg-primary text-primary-foreground"
                     : "glass-dark text-secondary-foreground"}
         ${online && !pending ? "animate-glow-pulse" : ""}
