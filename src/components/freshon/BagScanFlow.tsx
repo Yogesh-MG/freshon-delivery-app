@@ -82,7 +82,7 @@ export const BagScanFlow = ({ trip, onAllScanned, busy }: Props) => {
         if (!match.ok) {
             toast.error(
                 match.reason === "malformed"
-                    ? `Not a bag code — expected ${BAG_CODE_PREFIX}FRSH-XXXXXX-1`
+                    ? `Not a bag code — expected ${BAG_CODE_PREFIX}XXXXXX-1`
                     : match.reason === "duplicate"
                         ? `Order ${match.orderId} is already scanned`
                         : `Order ${match.orderId} isn't on this trip`,

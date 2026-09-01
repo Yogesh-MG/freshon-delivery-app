@@ -123,7 +123,7 @@ export const QrScanner = ({
                             autoFocus
                             value={manualValue}
                             onChange={(e) => setManualValue(e.target.value)}
-                            placeholder="D-FRSH-123456-1"
+                            placeholder="D-123456-1"
                             className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-3 font-mono text-lg text-secondary-foreground outline-none ring-accent placeholder:text-secondary-foreground/40 focus:ring-2"
                         />
                         <button

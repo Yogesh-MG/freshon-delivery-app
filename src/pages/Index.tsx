@@ -25,7 +25,7 @@ import { DeliveryAssignmentService } from "@/lib/deliveryAssignmentService";
 import { DeliveryStatusService } from "@/lib/deliveryStatusService";
 import { DeliveryPartnerService } from "@/lib/deliveryPartnerService";
 import { DeliveryTrip, DeliveryTripService, TripStop } from "@/lib/deliveryTripService";
-import type { ScannedBag } from "@/lib/bagCode";
+import { canonicalBagCode, type ScannedBag } from "@/lib/bagCode";
 import { useDeliverySocket } from "@/hooks/useDeliverySocket";
 import { TripOffer } from "@/components/freshon/TripOffer";
 import { TripPreview } from "@/components/freshon/TripPreview";
@@ -488,7 +488,10 @@ const Index = () => {
     }
     const previous = online;
     setOnline(nextOnline);
-    const coords = await getCurrentCoords();
+    // Only going online needs a position — it seeds dispatch and the map.
+    // Going offline used to sit through the same 5s high-accuracy GPS wait for
+    // coordinates the server doesn't need, so the tap felt ignored.
+    const coords = nextOnline ? await getCurrentCoords() : null;
     if (coords) setRiderPos(coords);
     const result = await DeliveryStatusService.updateStatus(nextOnline, coords?.latitude, coords?.longitude);
     if (!result.success) {
@@ -914,7 +917,11 @@ const Index = () => {
           onScan={async (code) => {
             const stop = pickupScanStop;
             setPickupScanStop(null);
-            if (stop) await confirmPickup(stop, code);
+            // The QR encodes a URL wrapper and older labels spell the order
+            // with its FRSH- prefix — send the server the one canonical
+            // D-XXXXXX-N form it accepts. Anything unrecognisable goes up
+            // as scanned so the server's own error names it.
+            if (stop) await confirmPickup(stop, canonicalBagCode(code) ?? code);
           }}
         />
       )}
@@ -980,6 +987,8 @@ const VerificationGate = ({
   );
 };
 
+/** Every offered trip in one list — a single order is just a one-stop trip,
+ *  not a separate tab for the rider to remember to check. */
 const AvailableTripsList = ({
   trips,
   busy,
@@ -990,74 +999,23 @@ const AvailableTripsList = ({
   busy?: boolean;
   onPreview: (t: DeliveryTrip) => void;
   distanceOf: (t: DeliveryTrip) => TripDistance;
-}) => {
-  const [tab, setTab] = useState<"single" | "batch">("single");
-  const single = trips.filter((t) => t.stops.filter((s) => s.type === "dropoff").length === 1);
-  const batch = trips.filter((t) => t.stops.filter((s) => s.type === "dropoff").length > 1);
-  const active = tab === "single" ? single : batch;
-
-  return (
-    <div className="space-y-3">
-      <div className="flex rounded-2xl bg-muted p-1 gap-1">
-        <button
-          onClick={() => setTab("single")}
-          className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition-all ${
-            tab === "single"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground"
-          }`}
-        >
-          Single
-          {single.length > 0 && (
-            <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-black leading-none ${
-              tab === "single" ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
-            }`}>
-              {single.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setTab("batch")}
-          className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition-all ${
-            tab === "batch"
-              ? "bg-card text-foreground shadow-sm"
-              : "text-muted-foreground"
-          }`}
-        >
-          Batch
-          {batch.length > 0 && (
-            <span className={`rounded-full px-1.5 py-0.5 text-[11px] font-black leading-none ${
-              tab === "batch" ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
-            }`}>
-              {batch.length}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {active.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-3xl bg-muted/50 px-6 py-10 text-center">
-          <div className="grid h-12 w-12 place-items-center rounded-2xl bg-card text-muted-foreground ring-1 ring-border">
-            <Package className="h-5 w-5" />
-          </div>
-          <div className="text-sm text-muted-foreground">No {tab} orders available right now</div>
-        </div>
-      ) : tab === "single" ? (
-        <div className="grid grid-cols-2 gap-2.5">
-          {single.map((t) => (
-            <SingleTripCard key={t.id} trip={t} distance={distanceOf(t)} busy={busy} onPreview={() => onPreview(t)} />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {batch.map((t) => (
-            <BatchTripCard key={t.id} trip={t} distance={distanceOf(t)} busy={busy} onPreview={() => onPreview(t)} />
-          ))}
-        </div>
-      )}
+}) => (
+  <div className="space-y-3">
+    <div className="flex items-center justify-between px-1">
+      <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">
+        Available trips
+      </span>
+      <span className="rounded-full bg-primary-soft px-2.5 py-1 text-[11px] font-bold text-primary">
+        {trips.length}
+      </span>
     </div>
-  );
-};
+    <div className="space-y-2.5">
+      {trips.map((t) => (
+        <TripCard key={t.id} trip={t} distance={distanceOf(t)} busy={busy} onPreview={() => onPreview(t)} />
+      ))}
+    </div>
+  </div>
+);
 
 /** Weight is always shown — a blank row where the load should be reads as
  *  "nothing to carry" rather than "not reported". */
@@ -1068,46 +1026,7 @@ const WeightRow = ({ weightKg, className = "" }: { weightKg: number | null; clas
   </div>
 );
 
-const SingleTripCard = ({
-  trip,
-  distance,
-  busy,
-  onPreview,
-}: {
-  trip: DeliveryTrip;
-  distance: TripDistance;
-  busy?: boolean;
-  onPreview: () => void;
-}) => (
-  <button
-    onClick={onPreview}
-    disabled={busy}
-    className="flex flex-col rounded-3xl glass p-4 text-left shadow-card-soft animate-slide-up transition-all hover:ring-1 hover:ring-primary/40 active:scale-[0.99] disabled:opacity-60"
-  >
-    <div className="flex items-baseline gap-0.5 mb-2.5">
-      <IndianRupee className="h-4 w-4 text-primary shrink-0 self-center" />
-      <span className="text-[28px] font-black leading-none tabular-nums text-primary">
-        {trip.earnings != null ? Number(trip.earnings).toFixed(0) : "—"}
-      </span>
-    </div>
-    <div className="space-y-1">
-      <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-        <Route className="h-3 w-3 text-primary shrink-0" />
-        {distance.totalKm.toFixed(1)} km
-      </div>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Clock className="h-3 w-3 shrink-0" />
-        ~{trip.total_duration_min} min
-      </div>
-      <WeightRow weightKg={tripWeightKg(trip)} />
-    </div>
-    <span className="mt-3.5 flex items-center justify-center gap-1 rounded-2xl bg-primary-soft py-2.5 text-xs font-bold text-primary">
-      View details <ArrowRight className="h-3.5 w-3.5" />
-    </span>
-  </button>
-);
-
-const BatchTripCard = ({
+const TripCard = ({
   trip,
   distance,
   busy,
@@ -1129,7 +1048,7 @@ const BatchTripCard = ({
       <div className="flex items-start justify-between gap-3">
         <div>
           <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground">
-            <Package className="h-3 w-3" /> {dropoffs.length} stops
+            <Package className="h-3 w-3" /> {dropoffs.length} stop{dropoffs.length === 1 ? "" : "s"}
           </span>
           <div className="mt-1.5 text-xs text-muted-foreground">{trip.hub?.label || "Hub"}</div>
         </div>
